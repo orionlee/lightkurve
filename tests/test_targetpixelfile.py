@@ -583,6 +583,7 @@ def test_properties2(capfd):
     assert len(out) > 1000
 
 
+@pytest.mark.enable_socket  # bokeh server requires local socket
 def test_interact():
     """Test the Jupyter notebook interact() widget."""
     for tpf in [

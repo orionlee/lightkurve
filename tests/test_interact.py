@@ -35,6 +35,7 @@ def test_bokeh_import_error(caplog):
         assert "requires the `bokeh` Python package" in caplog.text
 
 
+@pytest.mark.enable_socket  # bokeh server requires local socket
 @pytest.mark.skipif(bad_optional_imports, reason="requires bokeh")
 def test_malformed_notebook_url():
     """Test if malformed notebook_urls raise proper exceptions."""
@@ -49,6 +50,7 @@ def test_malformed_notebook_url():
     assert "object has no attribute" in exc.value.args[0]
 
 
+@pytest.mark.enable_socket  # bokeh server requires local socket
 @pytest.mark.skipif(bad_optional_imports, reason="requires bokeh")
 def test_graceful_exit_outside_notebook():
     """Test if running interact outside of a notebook does fails gracefully."""
@@ -115,6 +117,7 @@ def test_transform_and_ylim_funcs():
         tpf.interact(ylim_func=lambda lc: (0, lc.flux.max()))
 
 
+@pytest.mark.enable_socket  # bokeh server requires local socket
 @pytest.mark.skipif(bad_optional_imports, reason="requires bokeh")
 def test_interact_functions():
     """Do the helper functions in the interact module run without syntax error?"""

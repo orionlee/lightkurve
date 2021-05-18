@@ -24,7 +24,7 @@ jobs:
         include:
           - name: 3.6
             python-version: 3.6
-            pytest-command: poetry run pytest
+            pytest-command: poetry run pytest --disable-socket
           - name: 3.7
             python-version: 3.7
             pytest-command: poetry run pytest
@@ -67,7 +67,7 @@ jobs:
         poetry install
     - name: Test with pytest
       run: |
-        poetry run pytest
+        poetry run pytest --disable-socket
 
   # Run unit tests on Mac OSX
   pytest-osx:
@@ -87,7 +87,7 @@ jobs:
         poetry install
     - name: Test with pytest
       run: |
-        poetry run pytest
+        poetry run pytest --disable-socket
 
   # Use the `flake8` tool to check for syntax errors
   flake8-linter:
