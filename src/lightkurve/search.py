@@ -657,7 +657,7 @@ def search_targetpixelfile(
         'short' selects 1-min and 2-min products;
         'fast' selects 20-sec products.
         Alternatively, you can pass the exact exposure time in seconds as
-        an int or a float, e.g. ``cadence=600`` selects 10-minute cadence.
+        an int or a float, e.g., ``exptime=600`` selects 10-minute cadence.
         By default, all cadence modes are returned.
     cadence : 'long', 'short', 'fast', or float
         Synonym for `exptime`. Will likely be deprecated in the future.
@@ -674,7 +674,7 @@ def search_targetpixelfile(
     month : 1, 2, 3, 4 or list of int
         For Kepler's prime mission, there are three short-cadence
         TargetPixelFiles for each quarter, each covering one month.
-        Hence, if cadence='short' you can specify month=1, 2, 3, or 4.
+        Hence, if ``exptime='short'`` you can specify month=1, 2, 3, or 4.
         By default all months will be returned.
     limit : int
         Maximum number of products to return.
@@ -786,7 +786,7 @@ def search_lightcurve(
         'short' selects 1-min and 2-min products;
         'fast' selects 20-sec products.
         Alternatively, you can pass the exact exposure time in seconds as
-        an int or a float, e.g. ``cadence=600`` selects 10-minute cadence.
+        an int or a float, e.g., ``exptime=600`` selects 10-minute cadence.
         By default, all cadence modes are returned.
     cadence : 'long', 'short', 'fast', or float
         Synonym for `exptime`. This keyword will likely be deprecated in the future.
@@ -804,7 +804,7 @@ def search_lightcurve(
     month : 1, 2, 3, 4 or list of int
         For Kepler's prime mission, there are three short-cadence
         TargetPixelFiles for each quarter, each covering one month.
-        Hence, if cadence='short' you can specify month=1, 2, 3, or 4.
+        Hence, if ``exptime='short'`` you can specify month=1, 2, 3, or 4.
         By default all months will be returned.
     limit : int
         Maximum number of products to return.
@@ -946,7 +946,7 @@ def _search_products(
         'short' selects 1-min and 2-min products;
         'fast' selects 20-sec products.
         Alternatively, you can pass the exact exposure time in seconds as
-        an int or a float, e.g. ``cadence=600`` selects 10-minute cadence.
+        an int or a float, e.g., ``exptime=600`` selects 10-minute cadence.
         By default, all cadence modes are returned.
     mission : str, list of str
         'Kepler', 'K2', or 'TESS'. By default, all will be returned.
@@ -960,7 +960,7 @@ def _search_products(
     month : 1, 2, 3, 4 or list of int
         For Kepler's prime mission, there are three short-cadence
         TargetPixelFiles for each quarter, each covering one month.
-        Hence, if cadence='short' you can specify month=1, 2, 3, or 4.
+        Hence, if ``exptime='short'`` you can specify month=1, 2, 3, or 4.
         By default all months will be returned.
     limit : int
         Maximum number of products to return
@@ -1276,7 +1276,7 @@ def _filter_products(
         'short' selects 1-min and 2-min products;
         'fast' selects 20-sec products.
         Alternatively, you can pass the exact exposure time in seconds as
-        an int or a float, e.g. ``cadence=600`` selects 10-minute cadence.
+        an int or a float, e.g., ``exptime=600`` selects 10-minute cadence.
         By default, all cadence modes are returned.
     filetype : str
         Type of files queried at MAST (`Target Pixel` or `Lightcurve`).
