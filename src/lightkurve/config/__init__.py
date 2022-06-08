@@ -54,40 +54,24 @@ def get_cache_dir():
 
 
 def warn_if_default_cache_dir_migration_needed():
-    import os
     from pathlib import Path
     import warnings
 
-    new_dir = Path(Path.home(), ".lightkurve", "cache")
-    old_dir = Path(Path.home(), ".lightkurve-cache")
-    if not old_dir.is_symlink() and old_dir.is_dir():
-        # case 1: old_dir exists (not a symlink) - migration needed
-        warnings.warn(
-            f"Default data files cache directory is changed to {new_dir} ."
-            f"Remove the old directory {old_dir}, or move its files to the new one.",
-            UserWarning,
-        )
-        return True
-    elif old_dir.is_symlink():
-        # case 2: old_dir is a symlink, we check if it points to new_dir
-        # Notes:
-        # - resolving symlink could be done with old_dir.resolve()
-        #   but it raises PermissionError [WinError 5] Access is denied on Windows
-        # - we also avoid using Path.readlink(), as it requires Python 3.9+
-        old_dir_target = Path(old_dir.parent, os.readlink(old_dir))
-        if old_dir_target != new_dir:
-            #  case 2a: old_dir is a symlink points and does not point to a new_dir - migration needed
+    try:
+        new_dir = Path(Path.home(), ".lightkurve", "cache")
+        old_dir = Path(Path.home(), ".lightkurve-cache")
+        if old_dir.is_dir():
+            # case 1: old_dir exists - migration needed
             warnings.warn(
                 f"Default data files cache directory is changed to {new_dir} ."
-                f"Remove the old directory {old_dir} (a symlink), or move its files to the new one.",
+                f"Remove the old directory {old_dir}, or move its files to the new one.",
                 UserWarning,
             )
             return True
         else:
-            #  case 2b: old_dir is a symlink points to new_dir
-            # (e.g., for backward compatibility with older version of lightkurve)
-            # no migration needed
-            return False
-    else:
-        # case 3: old_dir does not exist. no migration needed
-        return False
+            return False  # old_dir does not exist. no migration needed
+    except Exception as err:
+        warnings.warn("warn_if_default_cache_dir_migration_needed(): unexpected error happened. No check is done. "
+                      f"Error: {err}",
+                      UserWarning)
+        return None
