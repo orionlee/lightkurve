@@ -530,6 +530,7 @@ class SearchResult(object):
         """
         download_dir = conf.search_result_download_dir
         if download_dir is None or download_dir == "":
+            config.warn_if_default_cache_dir_migration_needed()
             download_dir = config.get_cache_dir()
         if os.path.isdir(download_dir):
             return download_dir
