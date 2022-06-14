@@ -446,8 +446,10 @@ class SearchResult(object):
             See the :class:`KeplerQualityFlags <lightkurve.utils.KeplerQualityFlags>` or :class:`TessQualityFlags <lightkurve.utils.TessQualityFlags>` class for details on the bitmasks.
         download_dir : str, optional
             Location where the data files will be stored.
-            If `None` is passed, the value from `search_result_download_dir` configuration parameter is used,
+            If `None` is passed, the value from `cache_dir` configuration parameter is used,
             with "~/.lightkurve/cache" as the default.
+
+            See `~lightkurve.config.get_cache_dir()` for details.
         cutout_size : int, float or tuple, optional
             Side length of cutout in pixels. Tuples should have dimensions (y, x).
             Default size is (5, 5)
@@ -469,21 +471,6 @@ class SearchResult(object):
         SearchError
             If any other error occurs.
 
-        Examples
-        --------
-        To configure "/my_research/data" as the default `download_dir`, users can set it:
-
-        1. in the user's ``lightkurve.cfg`` file::
-
-            [search]
-            search_result_download_dir = /my_research/data
-
-        2. at run time::
-
-            import lightkurve as lk
-            lk.conf.search_result_download_dir = '/my_research/data'
-
-        See :ref:`configuration <api.config>` for more information.
         """
         if len(self.table) == 0:
             warnings.warn(
@@ -534,8 +521,10 @@ class SearchResult(object):
             See the :class:`KeplerQualityFlags <lightkurve.utils.KeplerQualityFlags>` or :class:`TessQualityFlags <lightkurve.utils.TessQualityFlags>` class for details on the bitmasks.
         download_dir : str, optional
             Location where the data files will be stored.
-            If `None` is passed, the value from `search_result_download_dir` configuration parameter is used,
+            If `None` is passed, the value from `cache_dir` configuration parameter is used,
             with "~/.lightkurve/cache" as the default.
+
+            See `~lightkurve.config.get_cache_dir()` for details.
         cutout_size : int, float or tuple, optional
             Side length of cutout in pixels. Tuples should have dimensions (y, x).
             Default size is (5, 5)
@@ -558,22 +547,6 @@ class SearchResult(object):
             If the TESSCut service times out (i.e. returns HTTP status 504).
         SearchError
             If any other error occurs.
-
-        Examples
-        --------
-        To configure "/my_research/data" as the default `download_dir`, users can set it:
-
-        1. in the user's ``lightkurve.cfg`` file::
-
-            [search]
-            search_result_download_dir = /my_research/data
-
-        2. at run time::
-
-            import lightkurve as lk
-            lk.conf.search_result_download_dir = '/my_research/data'
-
-        See :ref:`configuration <api.config>` for more information.
         """
         if len(self.table) == 0:
             warnings.warn(
@@ -599,36 +572,7 @@ class SearchResult(object):
             return LightCurveCollection(products)
 
     def _default_download_dir(self):
-        """Returns the default path to the directory where files will be downloaded.
-
-        By default, this method will return "~/.lightkurve-cache" and create
-        this directory if it does not exist.  If the directory cannot be
-        access or created, then it returns the local directory (".").
-
-        Returns
-        -------
-        download_dir : str
-            Path to location of `mastDownload` folder where data downloaded from MAST are stored
-        """
-        download_dir = conf.search_result_download_dir
-        if download_dir is None or download_dir == "":
-            download_dir = config.get_cache_dir()
-        if os.path.isdir(download_dir):
-            return download_dir
-        else:
-            # if it doesn't exist, make a new cache directory
-            try:
-                os.mkdir(download_dir)
-            # downloads locally if OS error occurs
-            except OSError:
-                log.warning(
-                    "Warning: unable to create {}. "
-                    "Downloading MAST files to the current "
-                    "working directory instead.".format(download_dir)
-                )
-                download_dir = "."
-
-        return download_dir
+        return config.get_cache_dir()
 
     def _fetch_tesscut_path(self, target, sector, download_dir, cutout_size):
         """Downloads TESS FFI cutout and returns path to local file.
