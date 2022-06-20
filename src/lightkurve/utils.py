@@ -240,6 +240,11 @@ class TessQualityFlags(QualityFlags):
     Straylight = 2048
     #: The second stray light flag is set automatically by Ames/SPOC based on background level thresholds.
     Straylight2 = 4096
+    # See TESS Science Data Products Description Document
+    PlanetSearchExclude = 8192
+    BadCalibrationExclude = 16384
+    # Set in the sector 20 data release notes
+    InsufficientTargets = 32768
 
     #: DEFAULT bitmask identifies all cadences which are definitely useless.
     DEFAULT_BITMASK = (
@@ -250,7 +255,7 @@ class TessQualityFlags(QualityFlags):
         DEFAULT_BITMASK | ApertureCosmic | CollateralCosmic | Straylight | Straylight2
     )
     #: HARDEST bitmask identifies cadences with any flag set. Its use is not recommended.
-    HARDEST_BITMASK = 8191
+    HARDEST_BITMASK = 65535
 
     #: Dictionary which provides friendly names for the various bitmasks.
     OPTIONS = {
@@ -275,6 +280,9 @@ class TessQualityFlags(QualityFlags):
         1024: "Cosmic ray in collateral data",
         2048: "Straylight",
         4096: "Straylight2",
+        8192: "Planet Search Exclude",
+        16384: "Bad Calibration Exclude",
+        32768: "Insufficient Targets for Error Correction Exclude",
     }
 
 
@@ -672,7 +680,7 @@ def centroid_quadratic(data, mask=None):
 
 
 def _query_solar_system_objects(
-    ra, dec, times, radius=0.1, location="kepler", cache=True
+    ra, dec, times, radius=0.1, location="kepler", cache=True, show_progress=True
 ):
     """Returns a list of asteroids/comets given a position and time.
 
@@ -693,6 +701,8 @@ def _query_solar_system_objects(
         Spacecraft location. Options include `'kepler'` and `'tess'`.
     cache : bool
         Whether to cache the search result. Default is True.
+    show_progress : bool
+        Whether to display a progress bar during the download. Default is True.
 
     Returns
     -------
@@ -718,9 +728,9 @@ def _query_solar_system_objects(
 
     df = None
     times = np.atleast_1d(times)
-    for time in tqdm(times, desc="Querying for SSOs"):
+    for time in tqdm(times, desc="Querying for SSOs", disable=~show_progress):
         url_queried = url + "EPOCH={}".format(time)
-        response = download_file(url_queried, cache=cache)
+        response = download_file(url_queried, cache=cache, show_progress=show_progress)
         if open(response).read(10) == "# Flag: -1":  # error code detected?
             raise IOError(
                 "SkyBot Solar System query failed.\n"
@@ -753,6 +763,7 @@ def show_citation_instructions():
     # because we can assume it is installed when notebook-specific features are called
     try:
         from IPython.display import HTML
+
         ipython_installed = True
     except ModuleNotFoundError:
         ipython_installed = False
@@ -761,7 +772,7 @@ def show_citation_instructions():
         print(__citation__)
     else:
         from pathlib import Path  # local import to speed up `import lightkurve`
-        import astroquery         # local import to speed up `import lightkurve`
+        import astroquery  # local import to speed up `import lightkurve`
 
         templatefile = Path(PACKAGEDIR, "data", "show_citation_instructions.html")
         template = open(templatefile, "r").read()
