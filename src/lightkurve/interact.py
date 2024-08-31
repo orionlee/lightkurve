@@ -1302,7 +1302,7 @@ def make_interact_sky_selection_elements(fig_tpf):
     return message_selected_target, arrow_4_selected
 
 
-def show_skyview_widget(tpf, notebook_url=None, aperture_mask="empty", catalogs=None, magnitude_limit=18):
+def show_skyview_widget(tpf, notebook_url=None, aperture_mask="empty", catalogs=None, magnitude_limit=18, return_type=None):
     """skyview
 
     Parameters
@@ -1420,5 +1420,8 @@ def show_skyview_widget(tpf, notebook_url=None, aperture_mask="empty", catalogs=
         #  as it has its own event loop.)
         doc.add_next_tick_callback(lambda: async_create_interact_ui(doc))
 
-    output_notebook(verbose=False, hide_banner=True)
-    return show(create_interact_ui, notebook_url=notebook_url)
+    if return_type is None:
+        output_notebook(verbose=False, hide_banner=True)
+        return show(create_interact_ui, notebook_url=notebook_url)
+    elif return_type == "doc_init_fn":
+        return async_create_interact_ui
