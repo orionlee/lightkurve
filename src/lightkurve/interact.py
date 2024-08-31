@@ -189,7 +189,10 @@ def prepare_lightcurve_datasource(lc):
     # Convert time into human readable strings, breaks with NaN time
     # See https://github.com/lightkurve/lightkurve/issues/116
     if (lc.time == lc.time).all():
-        human_time = lc.time.isot
+        if hasattr(lc.time, "isot"):
+            human_time = lc.time.isot
+        else:
+            human_time = lc.time.value  # e.g. for normalized phase
     else:
         human_time = [" "] * len(lc.flux)
 
@@ -377,14 +380,23 @@ def make_lightcurve_figure_elements(lc, lc_source, ylim_func=None):
         hover_alpha=0.9,
         hover_line_color="white",
     )
-    tooltips = [
-        ("Cadence", "@cadence"),
-        ("Time ({})".format(lc.time.format.upper()), "@time{0,0.000}"),
-        ("Time (ISO)", "@time_iso"),
-        ("Flux", "@flux"),
-        ("Quality Code", "@quality_code"),
-        ("Quality Flag", "@quality"),
-    ]
+    if hasattr(lc.time, "format"):
+        tooltips = [
+            ("Cadence", "@cadence"),
+            ("Time ({})".format(lc.time.format.upper()), "@time{0,0.000}"),
+            ("Time (ISO)", "@time_iso"),
+            ("Flux", "@flux"),
+            ("Quality Code", "@quality_code"),
+            ("Quality Flag", "@quality"),
+        ]
+    else:  # for normalized phase
+        tooltips = [
+            ("Cadence", "@cadence"),
+            ("Time", "@time{0,0.000}"),
+            ("Flux", "@flux"),
+            ("Quality Code", "@quality_code"),
+            ("Quality Flag", "@quality"),
+        ]
     fig.add_tools(
         HoverTool(
             tooltips=tooltips,
