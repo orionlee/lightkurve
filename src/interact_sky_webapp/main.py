@@ -210,14 +210,37 @@ def show_app(tic, sector):
     #     create_lc_viewer_ui(curdoc())
     #     return
 
-    sr = lk.search_targetpixelfile(f"TIC{tic}", mission="TESS", sector=sector, author="SPOC")
-    tpf = sr[-1].download()
-    print("DBG2: ", tpf)
+    if sector is not None:
+        msg_label = f"TIC {tic} sector {sector}"
+    else:
+        msg_label = f"TIC {tic}"
+    aperture_mask = "pipeline"
+    cutout_size = None
+    sr = lk.search_targetpixelfile(f"TIC{tic}", mission="TESS", sector=sector)
+    if len(sr) < 1:
+        print(f"INFO: no TPF found for {msg_label}. Use TessCut.")
+        aperture_mask = None  # N/A for TessCut
+        cutout_size = (11, 11)  # OPEN: would be too small for bright stars
+        sr = lk.search_tesscut(f"TIC{tic}", sector=sector)
+    if len(sr) < 1:
+        print(f"INFO: Cannot find TPF or TESSCut for {msg_label}. No plot to be made.")
+        curdoc().add_root(Div(text=f"Cannot find Pixel data for {msg_label}", name="err_msg"))
+        return
+
+    tpf = sr[-1].download(cutout_size=cutout_size)
+    print("DBG2: ", tpf, f" sector {tpf.sector}")
+
+    magnitude_limit = tpf.meta.get("TESSMAG", 0)
+    if magnitude_limit == 0:
+        # handle case TESSMAG header is missing, or is explicitly 0 (from TessCut)
+        magnitude_limit = 18
+    else:
+        magnitude_limit += 7
 
     create_skyview_ui = show_skyview_widget(
         tpf,
-        aperture_mask="pipeline",
-        magnitude_limit=tpf.meta.get("TESSMAG", 10) + 8,  # defaulted to 18
+        aperture_mask=aperture_mask,
+        magnitude_limit=magnitude_limit,
         catalogs=[
             (
                 "gaiadr3_tic",
