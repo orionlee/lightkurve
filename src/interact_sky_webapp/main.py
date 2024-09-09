@@ -205,7 +205,7 @@ def create_lc_viewer_ui(doc):
     doc.add_root(ui_layout)
 
 
-def show_app(tic, sector):
+def show_app(tic, sector, magnitude_limit=None):
     # if True:    # test LC viewer UI only
     #     create_lc_viewer_ui(curdoc())
     #     return
@@ -230,12 +230,14 @@ def show_app(tic, sector):
     tpf = sr[-1].download(cutout_size=cutout_size)
     print("DBG2: ", tpf, f" sector {tpf.sector}")
 
-    magnitude_limit = tpf.meta.get("TESSMAG", 0)
-    if magnitude_limit == 0:
-        # handle case TESSMAG header is missing, or is explicitly 0 (from TessCut)
-        magnitude_limit = 18
-    else:
-        magnitude_limit += 7
+    if magnitude_limit is None:
+        # supply default
+        magnitude_limit = tpf.meta.get("TESSMAG", 0)
+        if magnitude_limit == 0:
+            # handle case TESSMAG header is missing, or is explicitly 0 (from TessCut)
+            magnitude_limit = 18
+        else:
+            magnitude_limit += 7
 
     create_skyview_ui = show_skyview_widget(
         tpf,
@@ -244,7 +246,7 @@ def show_app(tic, sector):
         catalogs=[
             (
                 "gaiadr3_tic",
-                dict(extra_cols_in_detail_view={"RUWE": "RUWE", "sepsi": "sepsi", "e_RV": "e_RV (km/s)"},
+                dict(extra_cols_in_detail_view={"RUWE": "RUWE", "sepsi": "sepsi", "e_RV": "e_RV (km/s)", "IPDfmp": "IPDfmp"},
                     # urls_template=dict(gaiadr3_nss_url="https://vizier.cfa.harvard.edu/viz-bin/VizieR-4?-ref=VIZ65a1a2351812e4&-source=I%2F357&Source=%s",),
                 )
             ),
@@ -274,11 +276,22 @@ def get_arg_as_int(args, arg_name, default_val=None):
         val = default_val
     return val
 
+
+def get_arg_as_float(args, arg_name, default_val=None):
+    try:
+        val = float(args.get(arg_name)[0])
+    except:
+        val = default_val
+    return val
+
+#
 # Entry Point logic
+#
 args = curdoc().session_context.request.arguments
 tic = get_arg_as_int(args, "tic", 400621146)  # default value for sample
 sector = get_arg_as_int(args, "sector", None)
-print("DBG1: ", tic, sector)
+magnitude_limit = get_arg_as_float(args, "magnitude_limit", None)
+print("DBG1: ", tic, sector, magnitude_limit, args)
 
 curdoc().title = "TESS SkyView with Gaia DR3, ZTF and VSX"
-show_app(tic, sector)
+show_app(tic, sector, magnitude_limit)
