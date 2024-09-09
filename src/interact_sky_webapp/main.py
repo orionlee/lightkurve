@@ -157,7 +157,7 @@ def make_lc_fig(url, period=None):
         return Div(text=f"Error in loading lightcurve. {type(e).__name__}: {e}", name="lc_fig")
 
 
-def create_lc_viewer_ui(doc):
+def create_lc_viewer_ui():
     in_url = TextInput(
         width=600, placeholder="ZTF Lightcurve CSV URL",
         # value="https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves?ID=660106400019009&COLLECTION=ztf_dr21&FORMAT=csv",  # TST
@@ -202,12 +202,12 @@ def create_lc_viewer_ui(doc):
 
     show_btn.on_click(add_lc_fig)
 
-    doc.add_root(ui_layout)
+    return ui_layout
 
 
 def show_app(tic, sector, magnitude_limit=None):
     # if True:    # test LC viewer UI only
-    #     create_lc_viewer_ui(curdoc())
+    #     curdoc().add_root(create_lc_viewer_ui())
     #     return
 
     if sector is not None:
@@ -262,8 +262,8 @@ def show_app(tic, sector, magnitude_limit=None):
     )
 
     async def create_app_ui(doc):
-        await create_skyview_ui(doc)
-        create_lc_viewer_ui(doc)
+        doc.add_root(await create_skyview_ui())
+        doc.add_root(create_lc_viewer_ui())
 
     doc = curdoc()
     doc.add_next_tick_callback(lambda: create_app_ui(doc))
