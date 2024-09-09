@@ -1365,7 +1365,7 @@ def show_skyview_widget(tpf, notebook_url=None, aperture_mask="empty", catalogs=
 
     aperture_mask = tpf._parse_aperture_mask(aperture_mask)
 
-    async def async_create_interact_ui(doc):
+    async def async_create_interact_ui():
         tpf_source = prepare_tpf_datasource(tpf, aperture_mask)
 
         # The data source includes metadata for hover-over tooltips
@@ -1424,13 +1424,15 @@ def show_skyview_widget(tpf, notebook_url=None, aperture_mask="empty", catalogs=
                     message_selected_target,
                 )
             )
-        doc.add_root(widgets_and_figures)
+        return widgets_and_figures
 
     def create_interact_ui(doc):
         # bokeh-specific trick to use async codes to create the UI
         # (the naive asyncio.run() does not work in a bokeh server,
         #  as it has its own event loop.)
-        doc.add_next_tick_callback(lambda: async_create_interact_ui(doc))
+        async def do_create_ui():
+            doc.add_root(await async_create_interact_ui())
+        doc.add_next_tick_callback(do_create_ui)
 
     if return_type is None:
         output_notebook(verbose=False, hide_banner=True)
