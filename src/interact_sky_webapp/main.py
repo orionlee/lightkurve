@@ -114,6 +114,7 @@ def make_lc_fig(url, period=None):
 
         if period is not None:
             lc = lc.fold(period=period, normalize_phase=True)
+            lc.label += f", P = {period} d"
 
         #  hack: cadenceno and quality columns expected by prepare_lightcurve_datasource()
         lc["quality"] = np.zeros_like(lc.flux, dtype=int)
