@@ -309,6 +309,14 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         else:
             magnitude_limit += 7
 
+    # truncate the TPF to avoid showing the pixel brightness
+    # at the beginning of observation,
+    # as it's often not representative
+    # (due to scatter light at the beginning of a sector)
+    # Show brightness around day 3 (arbitrarily) instead.
+    if tpf.time.max() - tpf.time.min() > 3:
+        tpf = tpf[tpf.time.value > tpf.time.min().value + 3]
+
     create_skyview_ui = show_skyview_widget(
         tpf,
         aperture_mask=aperture_mask,
