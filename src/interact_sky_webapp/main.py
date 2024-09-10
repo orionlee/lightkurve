@@ -221,7 +221,18 @@ def create_lc_viewer_ui():
         else:
             ui_layout.children.append(fig)
 
-    plot_btn.on_click(add_lc_fig)
+    def add_lc_fig_with_msg():
+        # immediately show a message, as the actual plotting would take time
+        msg_ui = Div(text="Plotting...", name="lc_fig")
+        old_fig = ui_layout.select_one({"name": "lc_fig"})
+        if old_fig is not None:
+            # https://discourse.bokeh.org/t/clearing-plot-or-removing-all-glyphs/6792/6
+            ui_layout.children[-1] = msg_ui
+        else:
+            ui_layout.children.append(msg_ui)
+        curdoc().add_next_tick_callback(add_lc_fig)
+
+    plot_btn.on_click(add_lc_fig_with_msg)
 
     return ui_layout
 
@@ -287,8 +298,9 @@ def create_app_ui_container():
 
 
 async def create_app_body_ui(tic, sector, magnitude_limit=None):
-    if True:  # for dev purpose only
-        return column(create_lc_viewer_ui())
+    # if True:  # for dev purpose only
+    #     return column(create_lc_viewer_ui())
+
     # convert (potential) textual inputs to typed value
     try:
         tic = None if tic is None or tic == "" else int(tic)
