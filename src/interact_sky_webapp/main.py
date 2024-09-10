@@ -212,52 +212,48 @@ def create_search_form(tic, sector, magnitude_limit):
             return ""
         else:
             return str(val)
-    in_tic = TextInput(
-        width=100,
-        value=to_str(tic),
-    )
 
-    in_sector = TextInput(
-        width=100,
-        placeholder="optional, latest if not specified",
-        value=to_str(sector),
-    )
+    # return a plain html search form, instead of using bokeh widgets
+    #
+    # HTML search form has the advantage of being completely stateless,
+    # not relying on communicating with server (via WebSocket).
+    # So for cases such as deploying in serverless environments such as Google Cloud Run,
+    # if the server instance has been shutdown due to idle policy,
+    # - plain html form would still work, as it will create a new HTTP request.
+    # - bokeh widget / WebSocket based form would not work, as it
+    #   relies on connecting to the server instance that has been shutdown.
 
-    in_magnitude_limit = TextInput(
-        width=100,
-        placeholder="optional, Tmag + 7 not specified",
-        value=to_str(magnitude_limit),
-    )
-
-    show_btn = Button(label="Show", button_type="primary")
-
-    ui_layout = column(
-        Div(text="TIC *"),
-        in_tic,
-        Div(text="Sector"),
-        in_sector,
-        Div(text="mag. limit"),
-        in_magnitude_limit,
-        show_btn,
+    # put css text into its constant string so that curly braces
+    # will not be misinterpreted as f-string substitution
+    css_text = """
+    <style>
+        #search-form-ctr {
+            padding-left: 10px;
+            padding-right: 16px;
+        }
+        #search-form-ctr input {
+            padding: 4px;
+            margin-bottom: 10px;
+        }
+    </style>
+"""
+    return column(
+        Div(text=f"""
+<div id="search-form-ctr">
+{css_text}
+    <form>
+        TIC *<br>
+        <input name="tic" value="{to_str(tic)}"><br>
+        Sector<br>
+        <input name="sector" value="{to_str(sector)}" placeholder="optional, latest if not specified"><br>
+        mag. limit<br>
+        <input name="magnitude_limit" value="{to_str(magnitude_limit)}" placeholder="optional, Tmag + 7 if not specified"><br>
+        <input type="submit" value="Show">
+    </form>
+</div>
+"""),
         name="app_search",
     )
-
-    def update_app_body():
-        async def do_update(doc):
-            ui_main = doc.select_one({"name": "app_main"})
-            ui_main.children = [
-                await create_app_body_ui(in_tic.value, in_sector.value, in_magnitude_limit.value)
-            ]
-
-        doc = curdoc()
-        # immediately inform user it's being processed,
-        # as the actual update will take a while
-        doc.select_one({"name": "app_main"}).children = [Div(text="Processing...")]
-        doc.add_next_tick_callback(lambda: do_update(doc))
-
-    show_btn.on_click(update_app_body)
-
-    return ui_layout
 
 
 def create_app_ui_container():
