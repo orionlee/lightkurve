@@ -168,14 +168,14 @@ def create_lc_viewer_ui():
         # value="1.651",  # TST
     )
 
-    show_btn = Button(label="Show", button_type="primary")
+    plot_btn = Button(label="Plot", button_type="primary")
 
     ui_layout = column(
         Div(text="<hr>"),  # a spacer
         Div(text="<h3>Lightcurve</h3>"),
         row(Div(text="URL:"), in_url),
         row(Div(text="Period (d):"), in_period),
-        show_btn,
+        plot_btn,
         name="lc_viewer_ctl_ctr",
     )
 
@@ -200,15 +200,81 @@ def create_lc_viewer_ui():
         else:
             ui_layout.children.append(fig)
 
-    show_btn.on_click(add_lc_fig)
+    plot_btn.on_click(add_lc_fig)
 
     return ui_layout
 
 
-def show_app(tic, sector, magnitude_limit=None):
-    # if True:    # test LC viewer UI only
-    #     curdoc().add_root(create_lc_viewer_ui())
-    #     return
+def create_search_form(tic, sector):
+    def to_str(val):
+        if val is None:
+            return ""
+        else:
+            return str(val)
+    in_tic = TextInput(
+        width=100,
+        value=to_str(tic),
+    )
+
+    in_sector = TextInput(
+        width=100,
+        placeholder="optional, latest if not specified",
+        value=to_str(sector),
+    )
+
+    show_btn = Button(label="Show", button_type="primary")
+
+    ui_layout = column(
+        Div(text="TIC *"),
+        in_tic,
+        Div(text="Sector"),
+        in_sector,
+        show_btn,
+        name="app_search",
+    )
+
+    def update_app_body():
+        async def do_update(doc):
+            ui_main = doc.select_one({"name": "app_main"})
+            ui_main.children = [
+                await create_app_body_ui(in_tic.value, in_sector.value)
+            ]
+
+        doc = curdoc()
+        # immediately inform user it's being processed,
+        # as the actual update will take a while
+        doc.select_one({"name": "app_main"}).children = [Div(text="Processing...")]
+        doc.add_next_tick_callback(lambda: do_update(doc))
+
+    show_btn.on_click(update_app_body)
+
+    return ui_layout
+
+
+def create_app_ui_container():
+    ui_layout = row(
+        column(name="app_left"),  # for search form
+        column(name="app_main"),
+        name="app_ctr",
+    )
+
+    return ui_layout
+
+
+async def create_app_body_ui(tic, sector, magnitude_limit=None):
+    # convert (potential) textual inputs to typed value
+    try:
+        tic = None if tic is None or tic == "" else int(tic)
+        sector = None if sector is None or sector == "" else int(sector)
+        magnitude_limit = None if magnitude_limit is None or magnitude_limit == "" else float(magnitude_limit)
+    except Exception as err:
+        return Div(text=f"<h3>Skyview</h3> Error: {err}", name="skyview")
+
+    if tic is None:
+        return column(
+            Div(text="<h3>Skyview</h3>", name="skyview"),
+            Div(text="<h3>Lightcurve</h3>", name="lc_viewer"),
+        )
 
     if sector is not None:
         msg_label = f"TIC {tic} sector {sector}"
@@ -224,8 +290,7 @@ def show_app(tic, sector, magnitude_limit=None):
         sr = lk.search_tesscut(f"TIC{tic}", sector=sector)
     if len(sr) < 1:
         print(f"INFO: Cannot find TPF or TESSCut for {msg_label}. No plot to be made.")
-        curdoc().add_root(Div(text=f"Cannot find Pixel data for {msg_label}", name="err_msg"))
-        return
+        return Div(text=f"<h3>SkyView</h3> Cannot find Pixel data for {msg_label}", name="skyview")
 
     tpf = sr[-1].download(cutout_size=cutout_size)
     print("DBG2: ", tpf, f" sector {tpf.sector}")
@@ -261,10 +326,28 @@ def show_app(tic, sector, magnitude_limit=None):
         return_type="doc_init_fn",
     )
 
-    async def create_app_ui(doc):
-        doc.add_root(await create_skyview_ui())
-        doc.add_root(create_lc_viewer_ui())
+    return column(
+        await create_skyview_ui(),
+        create_lc_viewer_ui(),
+    )
 
+
+def show_app(tic, sector, magnitude_limit=None):
+
+    async def create_app_ui(doc):
+        ui_ctr = create_app_ui_container()
+        ui_left = ui_ctr.select_one({"name": "app_left"})
+        ui_left.children = [create_search_form(tic, sector)]
+
+        ui_main = ui_ctr.select_one({"name": "app_main"})
+        ui_main.children = [
+            await create_app_body_ui(tic, sector, magnitude_limit=magnitude_limit)
+        ]
+        doc.add_root(ui_ctr)
+
+    #
+    # the actual entry point
+    #
     doc = curdoc()
     doc.add_next_tick_callback(lambda: create_app_ui(doc))
 
@@ -288,7 +371,7 @@ def get_arg_as_float(args, arg_name, default_val=None):
 # Entry Point logic
 #
 args = curdoc().session_context.request.arguments
-tic = get_arg_as_int(args, "tic", 400621146)  # default value for sample
+tic = get_arg_as_int(args, "tic", None)  # default value for sample
 sector = get_arg_as_int(args, "sector", None)
 magnitude_limit = get_arg_as_float(args, "magnitude_limit", None)
 print("DBG1: ", tic, sector, magnitude_limit, args)
