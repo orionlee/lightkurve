@@ -205,7 +205,7 @@ def create_lc_viewer_ui():
     return ui_layout
 
 
-def create_search_form(tic, sector):
+def create_search_form(tic, sector, magnitude_limit):
     def to_str(val):
         if val is None:
             return ""
@@ -222,6 +222,12 @@ def create_search_form(tic, sector):
         value=to_str(sector),
     )
 
+    in_magnitude_limit = TextInput(
+        width=100,
+        placeholder="optional, Tmag + 7 not specified",
+        value=to_str(magnitude_limit),
+    )
+
     show_btn = Button(label="Show", button_type="primary")
 
     ui_layout = column(
@@ -229,6 +235,8 @@ def create_search_form(tic, sector):
         in_tic,
         Div(text="Sector"),
         in_sector,
+        Div(text="mag. limit"),
+        in_magnitude_limit,
         show_btn,
         name="app_search",
     )
@@ -237,7 +245,7 @@ def create_search_form(tic, sector):
         async def do_update(doc):
             ui_main = doc.select_one({"name": "app_main"})
             ui_main.children = [
-                await create_app_body_ui(in_tic.value, in_sector.value)
+                await create_app_body_ui(in_tic.value, in_sector.value, in_magnitude_limit.value)
             ]
 
         doc = curdoc()
@@ -337,7 +345,7 @@ def show_app(tic, sector, magnitude_limit=None):
     async def create_app_ui(doc):
         ui_ctr = create_app_ui_container()
         ui_left = ui_ctr.select_one({"name": "app_left"})
-        ui_left.children = [create_search_form(tic, sector)]
+        ui_left.children = [create_search_form(tic, sector, magnitude_limit)]
 
         ui_main = ui_ctr.select_one({"name": "app_main"})
         ui_main.children = [
