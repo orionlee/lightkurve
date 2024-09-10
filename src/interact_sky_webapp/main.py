@@ -273,7 +273,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         sector = None if sector is None or sector == "" else int(sector)
         magnitude_limit = None if magnitude_limit is None or magnitude_limit == "" else float(magnitude_limit)
     except Exception as err:
-        return Div(text=f"<h3>Skyview</h3> Error: {err}", name="skyview")
+        return Div(text=f"<h3>Skyview</h3> Invalid Parameter. Error: {err}", name="skyview")
 
     if tic is None:
         return column(
