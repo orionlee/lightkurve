@@ -6,7 +6,7 @@ import lightkurve as lk
 from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements
 
 from bokeh.layouts import row, column
-from bokeh.models import Button, Div, TextInput, Dropdown
+from bokeh.models import Button, Div, TextInput, Select
 from bokeh.plotting import curdoc
 
 
@@ -108,12 +108,21 @@ def read_ztf_csv(
     return lc
 
 
-def make_lc_fig(url, period=None):
+def make_lc_fig(url, period=None, epoch=None, epoch_format=None):
     try:
         lc = read_ztf_csv(url)
 
         if period is not None:
-            lc = lc.fold(period=period, normalize_phase=True)
+            if epoch is not None:
+                if epoch_format is None or epoch_format == "btjd":
+                    epoch_time = Time(epoch, format="btjd")
+                elif epoch_format == "hjd":
+                    epoch_time = Time(epoch, format="jd", scale="utc")
+                else:
+                    raise ValueError(f"Invalid epoch_format: {epoch_format}")
+            else:
+                epoch_time = None
+            lc = lc.fold(period=period, epoch_time=epoch_time, normalize_phase=True)
             lc.label += f", P = {period} d"
 
         #  hack: cadenceno and quality columns expected by prepare_lightcurve_datasource()
@@ -166,7 +175,15 @@ def create_lc_viewer_ui():
 
     in_period = TextInput(
         width=100,
+        placeholder="optional",
         # value="1.651",  # TST
+    )
+
+    in_epoch = TextInput(width=120, placeholder="optional")  # slightly wider, to (long) accommodate JD value
+
+    in_epoch_format = Select(
+        options=[("btjd", "BTJD"), ("hjd", "HJD")],
+        value="btjd"
     )
 
     plot_btn = Button(label="Plot", button_type="primary")
@@ -174,8 +191,8 @@ def create_lc_viewer_ui():
     ui_layout = column(
         Div(text="<hr>"),  # a spacer
         Div(text="<h3>Lightcurve</h3>"),
-        row(Div(text="URL:"), in_url),
-        row(Div(text="Period (d):"), in_period),
+        row(Div(text="URL *"), in_url),
+        row(Div(text="Period (d)"), in_period, Div(text="epoch"), in_epoch, in_epoch_format),
         plot_btn,
         name="lc_viewer_ctl_ctr",
     )
@@ -186,12 +203,15 @@ def create_lc_viewer_ui():
 
         period = in_period.value
         # convert to optional float
-        if period == "":
-            period = None
-        else:
-            period = float(period)
+        period = float(period) if period != "" else None
 
-        fig = make_lc_fig(url, period)
+        epoch = in_epoch.value
+        # convert to optional float
+        epoch = float(epoch) if epoch != "" else None
+
+        epoch_format = in_epoch_format.value
+
+        fig = make_lc_fig(url, period, epoch, epoch_format)
 
         # add the plot (replacing existing plot, if any)
         old_fig = ui_layout.select_one({"name": "lc_fig"})
@@ -243,7 +263,7 @@ def create_search_form(tic, sector, magnitude_limit):
 {css_text}
     <form>
         TIC *<br>
-        <input name="tic" value="{to_str(tic)}"><br>
+        <input name="tic" value="{to_str(tic)}" accesskey="/"><br>
         Sector<br>
         <input name="sector" value="{to_str(sector)}" placeholder="optional, latest if not specified"><br>
         mag. limit<br>
@@ -267,6 +287,8 @@ def create_app_ui_container():
 
 
 async def create_app_body_ui(tic, sector, magnitude_limit=None):
+    if True:  # for dev purpose only
+        return column(create_lc_viewer_ui())
     # convert (potential) textual inputs to typed value
     try:
         tic = None if tic is None or tic == "" else int(tic)
