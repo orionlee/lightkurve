@@ -4,6 +4,7 @@ import astropy.units as u
 
 import lightkurve as lk
 from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements
+from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 
 from bokeh.layouts import row, column
 from bokeh.models import Button, Div, TextInput, Select
@@ -361,7 +362,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         magnitude_limit=magnitude_limit,
         catalogs=[
             (
-                "gaiadr3_tic",
+                ExtendedGaiaDR3TICInteractSkyCatalogProvider,
                 dict(extra_cols_in_detail_view={"RUWE": "RUWE", "sepsi": "sepsi", "e_RV": "e_RV (km/s)", "IPDfmp": "IPDfmp"},
                     # urls_template=dict(gaiadr3_nss_url="https://vizier.cfa.harvard.edu/viz-bin/VizieR-4?-ref=VIZ65a1a2351812e4&-source=I%2F357&Source=%s",),
                 )
