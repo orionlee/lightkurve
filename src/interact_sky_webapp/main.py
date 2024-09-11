@@ -113,6 +113,10 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None):
     try:
         lc = read_ztf_csv(url)
 
+        if "filtercode" in lc.colnames:  # include ZTF filter in label for title
+            filter_str = ",".join(np.unique(lc["filtercode"]))
+            lc.label += f" ({filter_str})"
+
         if period is not None:
             if epoch is not None:
                 if epoch_format is None or epoch_format == "btjd":
