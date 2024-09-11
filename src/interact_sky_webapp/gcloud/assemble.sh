@@ -14,7 +14,7 @@ set -e
 mkdir -p $dest
 mkdir -p $dest/skyview
 
-cp --update --archive  $base/../main.py  $dest/skyview
+cp --update --archive  $base/../*.py  $dest/skyview
 cp --update --archive  $base/*  $dest
 cp --update --archive  $base/.*  $dest
 
