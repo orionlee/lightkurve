@@ -169,7 +169,7 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None):
 
 def create_lc_viewer_ui():
     in_url = TextInput(
-        width=600, placeholder="ZTF Lightcurve CSV URL",
+        width=600, placeholder="ZTF Lightcurve CSV URL (the LC link to the right of ZTF OID)",
         # value="https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves?ID=660106400019009&COLLECTION=ztf_dr21&FORMAT=csv",  # TST
     )
 
