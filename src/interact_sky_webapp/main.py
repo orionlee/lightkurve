@@ -7,7 +7,7 @@ from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasour
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 
 from bokeh.layouts import row, column
-from bokeh.models import Button, Div, TextInput, Select
+from bokeh.models import Button, Div, TextInput, Select, CustomJS
 from bokeh.plotting import curdoc
 
 
@@ -388,6 +388,23 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
     )
 
 
+def add_connection_lost_ui(doc):
+    # UI to notify users when the websocket connection to the server is lost
+    # thus losing all server-side based interactive features
+
+    # https://docs.bokeh.org/en/latest/docs/examples/interaction/js_callbacks/doc_js_events.html
+
+    js_connection_lost = CustomJS(code="""
+document.body.insertAdjacentHTML("afterbegin", `
+<div id="banner_ctr" style="font-size: 1.1rem; padding: 10px; padding-left: 5vw;
+    background-color: rgba(255, 0, 0, 0.7); color: white; font-weight: bold;">
+Lost the connection to the server. You'd need to reload the page for some interactive functions.
+</div>
+`);
+""")
+    doc.js_on_event("connection_lost", js_connection_lost)
+
+
 def show_app(tic, sector, magnitude_limit=None):
 
     async def create_app_ui(doc):
@@ -406,6 +423,7 @@ def show_app(tic, sector, magnitude_limit=None):
     #
     doc = curdoc()
     doc.add_next_tick_callback(lambda: create_app_ui(doc))
+    add_connection_lost_ui(doc)
 
 
 def get_arg_as_int(args, arg_name, default_val=None):
