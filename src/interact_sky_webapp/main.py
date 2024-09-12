@@ -385,6 +385,9 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
     return column(
         await create_skyview_ui(),
         create_lc_viewer_ui(),
+        # the name is used to signify an interactive UI is returned
+        # (as opposed to the UI with a dummy UI or error message in the boundary conditions)
+        name="app_body_interactive",
     )
 
 
@@ -413,17 +416,19 @@ def show_app(tic, sector, magnitude_limit=None):
         ui_left.children = [create_search_form(tic, sector, magnitude_limit)]
 
         ui_main = ui_ctr.select_one({"name": "app_main"})
-        ui_main.children = [
-            await create_app_body_ui(tic, sector, magnitude_limit=magnitude_limit)
-        ]
+        ui_body = await create_app_body_ui(tic, sector, magnitude_limit=magnitude_limit)
+        ui_main.children = [ui_body]
         doc.add_root(ui_ctr)
+        if ui_body.name == "app_body_interactive":
+            # the UI for monitoring WebSocket connection is only relevant
+            # in the normal case that interactive widgets are to be shown.
+            add_connection_lost_ui(doc)
 
     #
     # the actual entry point
     #
     doc = curdoc()
     doc.add_next_tick_callback(lambda: create_app_ui(doc))
-    add_connection_lost_ui(doc)
 
 
 def get_arg_as_int(args, arg_name, default_val=None):
