@@ -18,7 +18,7 @@ cp --update --archive  $base/../*.py  $dest/skyview
 cp --update --archive  $base/*  $dest
 cp --update --archive  $base/.*  $dest
 
-ls -l $dest/
+ls -l $dest/ $dest/skyview
 
 echo
 echo Sources assembled. You can do the following for actual deployment:
