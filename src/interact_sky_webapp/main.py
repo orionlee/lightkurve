@@ -7,7 +7,7 @@ from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasour
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 
 from bokeh.layouts import row, column
-from bokeh.models import Button, Div, TextInput, Select, CustomJS, LinearColorMapper, Checkbox
+from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox
 from bokeh.plotting import curdoc
 
 
@@ -175,6 +175,8 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
             )
             r_lc_circle.glyph.fill_color = dict(field="time_original", transform=time_cmap)
             r_lc_circle.nonselection_glyph.fill_color = dict(field="time_original", transform=time_cmap)
+            color_bar = ColorBar(color_mapper=time_cmap, location=(0, 0), formatter=NumeralTickFormatter(format="0,0"))
+            fig_lc.add_layout(color_bar, "right")
 
         return fig_lc
     except Exception as e:
