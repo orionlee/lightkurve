@@ -29,8 +29,8 @@ echo bokeh serve --show skyview
 echo "# actual deployment with Google Cloud SDK"
 echo gcloud run deploy --source .
 echo
-echo Note: The first deployment would fail.
-echo       In gcloud service dashboard,
-echo       add environment variable BOKEH_EXTERNAL_HOSTNAME,
-echo       set it to the public hostname of the deployed service, and deploy again.
+echo Note:   The first deployment, the app  would not work, returning blank page
+echo         with errors in developer console suggesting failure in opening websockets.
+echo Action: In gcloud service dashboard, add environment variable BOKEH_ALLOW_WS_ORIGIN,
+echo         set it to the public hostname of the deployed service, and deploy again.
 

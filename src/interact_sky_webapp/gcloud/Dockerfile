@@ -21,12 +21,8 @@ RUN apt-get update && \
 # Install production dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Run the web service on container startup. Here we use the gunicorn
-# webserver, with one worker process and 8 threads.
-# For environments with multiple CPU cores, increase the number of workers
-# to be equal to the cores available.
-# Timeout is set to 0 to disable the timeouts of the workers to allow Cloud Run to handle instance scaling.
 # Note: In gcloud service dashboard,
-#       add environment variable BOKEH_EXTERNAL_HOSTNAME,
+#       add environment variable BOKEH_ALLOW_WS_ORIGIN
 #       and set it to the public hostname of the deployed service.
-CMD exec bokeh serve --port $PORT skyview  --allow-websocket-origin $BOKEH_EXTERNAL_HOSTNAME
+# See: https://docs.bokeh.org/en/latest/docs/reference/command/subcommands/serve.html#network-configuration
+CMD exec bokeh serve --port $PORT skyview
