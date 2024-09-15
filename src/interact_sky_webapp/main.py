@@ -201,15 +201,21 @@ def create_lc_viewer_ui():
         value="btjd"
     )
 
+    btn_period_half = Button(label="1/2 P")
+    btn_period_double = Button(label="2x P")
+
     in_use_cmap_for_folded = Checkbox(label="Use color map to show time in phase plot", active=False)
-    plot_btn = Button(label="Plot", button_type="primary")
+    btn_plot = Button(label="Plot", button_type="primary")
 
     ui_layout = column(
         Div(text="<hr>"),  # a spacer
         Div(text="<h3>Lightcurve</h3>"),
         row(Div(text="URL *"), in_url),
-        row(Div(text="Period (d)"), in_period, Div(text="epoch"), in_epoch, in_epoch_format),
-        row(plot_btn, in_use_cmap_for_folded),
+        row(
+            Div(text="Period (d)"), in_period, Div(text="epoch"), in_epoch, in_epoch_format,
+            btn_period_half, btn_period_double,
+        ),
+        row(btn_plot, in_use_cmap_for_folded),
         name="lc_viewer_ctl_ctr",
     )
 
@@ -249,7 +255,21 @@ def create_lc_viewer_ui():
             ui_layout.children.append(msg_ui)
         curdoc().add_next_tick_callback(add_lc_fig)
 
-    plot_btn.on_click(add_lc_fig_with_msg)
+    btn_plot.on_click(add_lc_fig_with_msg)
+
+    def do_change_period(factor):
+        try:
+            period = float(in_period.value)
+        except Exception:
+            # No-op for case no period (empty string), or somehow an invalid number is used
+            return
+
+        # change the period and  re-plot
+        in_period.value = str(period * factor)
+        add_lc_fig_with_msg()
+
+    btn_period_half.on_click(lambda: do_change_period(0.5))
+    btn_period_double.on_click(lambda: do_change_period(2))
 
     return ui_layout
 
