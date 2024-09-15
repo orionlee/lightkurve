@@ -7,7 +7,7 @@ from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasour
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 
 from bokeh.layouts import row, column
-from bokeh.models import Button, Div, TextInput, Select, CustomJS
+from bokeh.models import Button, Div, TextInput, Select, CustomJS, LinearColorMapper, Checkbox
 from bokeh.plotting import curdoc
 
 
@@ -109,7 +109,7 @@ def read_ztf_csv(
     return lc
 
 
-def make_lc_fig(url, period=None, epoch=None, epoch_format=None):
+def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_folded=False):
     try:
         lc = read_ztf_csv(url)
 
@@ -134,6 +134,8 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None):
         lc["quality"] = np.zeros_like(lc.flux, dtype=int)
         lc["cadenceno"] = lc["quality"]
         lc_source = prepare_lightcurve_datasource(lc)
+        if isinstance(lc, lk.FoldedLightCurve) and use_cmap_for_folded:
+            lc_source.data["time_original"] = lc.time_original.value
 
         ylim_func = lambda lc: (np.nanmin(lc.flux).value, np.nanmax(lc.flux).value)
         fig_lc, vertical_line = make_lightcurve_figure_elements(lc, lc_source, ylim_func=ylim_func)
@@ -164,9 +166,17 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None):
         r_lc_circle.glyph.fill_alpha = 1.0
         r_lc_circle.nonselection_glyph.fill_color = "gray"
         r_lc_circle.nonselection_glyph.fill_alpha = 1.0
+        if isinstance(lc, lk.FoldedLightCurve) and use_cmap_for_folded:
+            # for phase plot, add color to circles to signify time
+            time_cmap = LinearColorMapper(
+                palette="Viridis256",
+                low=min(lc_source.data["time_original"]),
+                high=max(lc_source.data["time_original"])
+            )
+            r_lc_circle.glyph.fill_color = dict(field="time_original", transform=time_cmap)
+            r_lc_circle.nonselection_glyph.fill_color = dict(field="time_original", transform=time_cmap)
 
         return fig_lc
-        # return Div(text=f"TODO - Lightcurve with {len(lc)} points, url:  {url}", name="lc_fig")
     except Exception as e:
         traceback.print_exc()  # for sever side debug
         return Div(text=f"Error in loading lightcurve. {type(e).__name__}: {e}", name="lc_fig")
@@ -191,6 +201,7 @@ def create_lc_viewer_ui():
         value="btjd"
     )
 
+    in_use_cmap_for_folded = Checkbox(label="Use color map to show time in phase plot", active=False)
     plot_btn = Button(label="Plot", button_type="primary")
 
     ui_layout = column(
@@ -198,7 +209,7 @@ def create_lc_viewer_ui():
         Div(text="<h3>Lightcurve</h3>"),
         row(Div(text="URL *"), in_url),
         row(Div(text="Period (d)"), in_period, Div(text="epoch"), in_epoch, in_epoch_format),
-        plot_btn,
+        row(plot_btn, in_use_cmap_for_folded),
         name="lc_viewer_ctl_ctr",
     )
 
@@ -216,7 +227,8 @@ def create_lc_viewer_ui():
 
         epoch_format = in_epoch_format.value
 
-        fig = make_lc_fig(url, period, epoch, epoch_format)
+        use_cmap_for_folded = in_use_cmap_for_folded.active
+        fig = make_lc_fig(url, period, epoch, epoch_format, use_cmap_for_folded)
 
         # add the plot (replacing existing plot, if any)
         old_fig = ui_layout.select_one({"name": "lc_fig"})
