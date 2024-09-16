@@ -179,6 +179,7 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
             r_lc_circle.nonselection_glyph.fill_color = dict(field="time_original", transform=time_cmap)
             color_bar = ColorBar(color_mapper=time_cmap, location=(0, 0), formatter=NumeralTickFormatter(format="0,0"))
             fig_lc.add_layout(color_bar, "right")
+            fig_lc.width += 100  # extra horizontal space for the color bar
 
         return fig_lc
     except Exception as e:
