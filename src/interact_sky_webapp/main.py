@@ -1,4 +1,5 @@
-import traceback
+import logging
+import os
 
 import astropy.units as u
 
@@ -17,6 +18,17 @@ import warnings
 from astropy.time import Time
 from astropy.table import Table
 import numpy as np
+
+log = logging.getLogger(__name__)
+
+
+def set_log_level_from_env():
+    # use Python standard string constant in
+    #  https://docs.python.org/3/howto/logging.html
+    level_str = os.environ.get("INTERACT_SKY_WEBAPP_LOGLEVEL", None)
+    if level_str:
+        log.setLevel(level_str)
+    return level_str
 
 
 def read_ztf_csv(
@@ -183,7 +195,13 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
 
         return fig_lc
     except Exception as e:
-        traceback.print_exc()  # for sever side debug
+        if isinstance(e, IOError):
+            # usually some issues in network or ZTF server, nothing can be done on our end
+            log.warning(f"IOError (likely intermittent) of type {type(e).__name__} in loading ZTF lc: {url}")
+        else:
+            # other unexpected errors that might mean bugs on our end.
+            log.error(f"Error of type {type(e).__name__} in loading ZTF lc: {url}", exc_info=True)
+        # traceback.print_exc()  # for server side debug
         return Div(text=f"Error in loading lightcurve. {type(e).__name__}: {e}", name="lc_fig")
 
 
@@ -369,16 +387,17 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         # for the use case here, the fast cadence data is irrelevant. It'd just make the processing slower.
         sr = sr[sr.exptime > 60 *u.s]
     if len(sr) < 1:
-        print(f"INFO: no TPF found for {msg_label}. Use TessCut.")
+        log.debug(f"No TPF found for {msg_label}. Use TessCut.")
         aperture_mask = None  # N/A for TessCut
         cutout_size = (11, 11)  # OPEN: would be too small for bright stars
         sr = lk.search_tesscut(f"TIC{tic}", sector=sector)
     if len(sr) < 1:
-        print(f"INFO: Cannot find TPF or TESSCut for {msg_label}. No plot to be made.")
+        log.debug(f"Cannot find TPF or TESSCut for {msg_label}. No plot to be made.")
         return Div(text=f"<h3>SkyView</h3> Cannot find Pixel data for {msg_label}", name="skyview")
 
     tpf = sr[-1].download(cutout_size=cutout_size)
-    print("DBG2: ", tpf, f" sector {tpf.sector}")
+    # set at info level, as it might be useful to gather statistics on the type of tpfs being plotted ()
+    log.info(f"Plot: {tpf}, sector={tpf.meta.get('SECTOR')}, exptime={sr.exptime[-1]}, TessCut={aperture_mask is None}")
 
     if magnitude_limit is None:
         # supply default
@@ -483,14 +502,16 @@ def get_arg_as_float(args, arg_name, default_val=None):
         val = default_val
     return val
 
+
 #
 # Entry Point logic
 #
+set_log_level_from_env()
 args = curdoc().session_context.request.arguments
 tic = get_arg_as_int(args, "tic", None)  # default value for sample
 sector = get_arg_as_int(args, "sector", None)
 magnitude_limit = get_arg_as_float(args, "magnitude_limit", None)
-print("DBG1: ", tic, sector, magnitude_limit, args)
+log.debug(f"Parameters: , {tic}, {sector}, {magnitude_limit} ; {args}")
 
 curdoc().title = "TESS SkyView with Gaia DR3, ZTF and VSX"
 show_app(tic, sector, magnitude_limit)
