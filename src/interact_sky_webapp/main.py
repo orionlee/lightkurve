@@ -202,7 +202,14 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
             # other unexpected errors that might mean bugs on our end.
             log.error(f"Error of type {type(e).__name__} in loading ZTF lc: {url}", exc_info=True)
         # traceback.print_exc()  # for server side debug
-        return Div(text=f"Error in loading lightcurve. {type(e).__name__}: {e}", name="lc_fig")
+        err_msg = f"Error in loading lightcurve. {type(e).__name__}: {e}"
+        if not url.startswith("https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves"):
+            # helpful in cases users copy-and-paste a wrong link
+            err_msg += (
+                "<br>The URL does not seem to be a valid ZTF lightcurve URL, "
+                "which starts with <code>https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves</code> ."
+            )
+        return Div(text=err_msg, name="lc_fig")
 
 
 def create_lc_viewer_ui():
