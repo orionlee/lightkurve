@@ -6,6 +6,7 @@ import astropy.units as u
 import lightkurve as lk
 from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
+from .tpf_utils import get_tpf, is_tesscut
 
 from bokeh.layouts import row, column
 from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox
@@ -23,11 +24,14 @@ log = logging.getLogger(__name__)
 
 
 def set_log_level_from_env():
+    from .tpf_utils import log as tpf_utils_log
+
     # use Python standard string constant in
     #  https://docs.python.org/3/howto/logging.html
     level_str = os.environ.get("INTERACT_SKY_WEBAPP_LOGLEVEL", None)
     if level_str:
         log.setLevel(level_str)
+        tpf_utils_log.setLevel(level_str)
     return level_str
 
 
@@ -386,25 +390,15 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         msg_label = f"TIC {tic} sector {sector}"
     else:
         msg_label = f"TIC {tic}"
-    aperture_mask = "pipeline"
-    cutout_size = None
-    sr = lk.search_targetpixelfile(f"TIC{tic}", mission="TESS", sector=sector)
-    if len(sr) > 1:
-        # exclude fast cadence data (20s), TPFs with fast cadence always has 2 min cadence counterparts
-        # for the use case here, the fast cadence data is irrelevant. It'd just make the processing slower.
-        sr = sr[sr.exptime > 60 *u.s]
-    if len(sr) < 1:
-        log.debug(f"No TPF found for {msg_label}. Use TessCut.")
-        aperture_mask = None  # N/A for TessCut
-        cutout_size = (11, 11)  # OPEN: would be too small for bright stars
-        sr = lk.search_tesscut(f"TIC{tic}", sector=sector)
-    if len(sr) < 1:
+
+    tpf, sr = await get_tpf(tic, sector, msg_label)
+
+    if tpf is None:
         log.debug(f"Cannot find TPF or TESSCut for {msg_label}. No plot to be made.")
         return Div(text=f"<h3>SkyView</h3> Cannot find Pixel data for {msg_label}", name="skyview")
 
-    tpf = sr[-1].download(cutout_size=cutout_size)
     # set at info level, as it might be useful to gather statistics on the type of tpfs being plotted ()
-    log.info(f"Plot: {tpf}, sector={tpf.meta.get('SECTOR')}, exptime={sr.exptime[-1]}, TessCut={aperture_mask is None}")
+    log.info(f"Plot: {tpf}, sector={tpf.meta.get('SECTOR')}, exptime={sr.exptime[-1]}, TessCut={is_tesscut(tpf)}")
 
     if magnitude_limit is None:
         # supply default
@@ -425,7 +419,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
     create_skyview_ui = show_skyview_widget(
         tpf,
-        aperture_mask=aperture_mask,
+        aperture_mask=tpf.pipeline_mask,
         magnitude_limit=magnitude_limit,
         catalogs=[
             (
