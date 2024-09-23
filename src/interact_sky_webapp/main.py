@@ -313,6 +313,63 @@ def create_lc_viewer_ui():
     return ui_layout
 
 
+def has_non_science_pixels(tpf):
+    # see figure 4.3 of https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handbook_v0.1.pdf
+    return (
+        tpf.column < 0 or  # virtual pixels to the left
+        tpf.column + tpf.shape[1] > 2048 or  # virtual pixels to the right
+        tpf.row + tpf.shape[1] >= 2048 or  # virtual pixels above
+        tpf.row < 0  # virtual pixels below. Should not happen, but keep it here for just in case
+    )
+
+
+def show_tpf_orientation_html(tpf):
+    """ "Helper to visualize the TPF's orientation in the sky.
+    Long arm is north, short arm with arrow is east.
+    """
+    coord_bottom_left = tpf.wcs.pixel_to_world(0, 0)
+#     coord_upper_right = tpf.wcs.pixel_to_world(tpf.shape[2] - 1, tpf.shape[1] - 1)
+    coord_upper_left = tpf.wcs.pixel_to_world(0, tpf.shape[2] - 1)
+    deg_from_north = coord_bottom_left.position_angle(coord_upper_left).to(u.deg).value
+
+    return f"""
+<div style="position: relative; margin-left: 16px;height: 64px;">
+    <div title="Long arm: North; Short arm with arrow: East"
+         style="display: inline-block; max-width: 64px;font-size: 32px;margin: 16px;\
+transform: rotate({-deg_from_north}deg);transform-origin: left; cursor:pointer;">↳</div>
+    <div style="display: inline-block;">Orientation<br>Long arm: north; short arm: east.</div>
+</div>"""
+
+
+def create_skyview_metadata_ui(tpf, ztf_search_radius):
+    if tpf is None:
+        return Div(name="skyview_metadata", text="")
+
+    tpf_author_str = "TessCut" if is_tesscut(tpf) else "SPOC"
+    cur_time_relative = tpf.time[0].value - tpf.meta.get("TSTART", np.nan)
+    unreliable_pixels_warn_msg = ""
+    if has_non_science_pixels(tpf):
+        unreliable_pixels_warn_msg = """
+<span style="background-color: yellow; padding-left: 4px; padding-right: 4px;">Warning:</span>
+Some of the pixels are not science pixels.
+See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handbook_v0.1.pdf">TESS Instrument Handbook</a>
+, section 4.1.3.
+<br>
+"""
+    # extra margin-top below is a hack. Otherwise, the UI will bleed into skyview widget above it.
+    return Div(name="skyview_metadata", text=f"""
+<div id="skyview_metadata_ctr" style="margin-top: 30px;">
+    <details>
+        <summary>Pixels source: {tpf_author_str}</summary>
+        Brightness at {tpf.time.format.upper()} {tpf.time[0].value:.2f} ({cur_time_relative:.2f} d in the sector)<br>
+        {unreliable_pixels_warn_msg}
+        {show_tpf_orientation_html(tpf)}
+        <br>ZTF search radius: {ztf_search_radius}<br>
+    </details>
+</div>
+""")
+
+
 def create_search_form(tic, sector, magnitude_limit):
     def to_str(val):
         if val is None:
@@ -423,6 +480,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         tpf = tpf[tpf.time.value > tpf.time.min().value + 3]
 
     vizier_server = vizier.conf.server
+    ztf_search_radius = 90 * u.arcsec
     create_skyview_ui = show_skyview_widget(
         tpf,
         aperture_mask=tpf.pipeline_mask,
@@ -443,7 +501,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
             (
                 "ztf",
-                dict(radius=1.5*u.arcmin)
+                dict(radius=ztf_search_radius)
             ),
 
             "vsx",
@@ -453,6 +511,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
     return column(
         await create_skyview_ui(),
+        create_skyview_metadata_ui(tpf, ztf_search_radius),
         create_lc_viewer_ui(),
         # the name is used to signify an interactive UI is returned
         # (as opposed to the UI with a dummy UI or error message in the boundary conditions)
