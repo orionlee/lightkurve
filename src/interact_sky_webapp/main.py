@@ -544,7 +544,24 @@ def show_app(tic, sector, magnitude_limit=None):
         ui_left.children = [create_search_form(tic, sector, magnitude_limit)]
 
         ui_main = ui_ctr.select_one({"name": "app_main"})
-        ui_body = await create_app_body_ui(tic, sector, magnitude_limit=magnitude_limit)
+        try:
+            ui_body = await create_app_body_ui(tic, sector, magnitude_limit=magnitude_limit)
+        except Exception as e:
+            if isinstance(e, IOError):
+                # usually some issues in network or MAST server, nothing can be done on our end
+                log.warning(
+                    f"IOError (likely intermittent) of type {type(e).__name__} in creating skyview for TIC {tic}, sector {sector}"
+                )
+                err_msg = (
+                    f"Network or MAST Server Error in creating SkyView. {type(e).__name__}: {e}.<br>"
+                    "Reload the page after a while to see if the issue is resolved."
+                )
+            else:
+                # unexpected errors that might mean bugs on our end.
+                log.error(f"Error of type {type(e).__name__} in creating skyview for TIC {tic}, sector {sector}", exc_info=True)
+                err_msg = f"Error in creating SkyView. {type(e).__name__}: {e}"
+            ui_body = Div(text=err_msg)
+
         ui_main.children = [ui_body]
         doc.add_root(ui_ctr)
         if ui_body.name == "app_body_interactive":
