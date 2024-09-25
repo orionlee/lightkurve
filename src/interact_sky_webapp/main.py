@@ -341,7 +341,7 @@ transform: rotate({-deg_from_north}deg);transform-origin: left; cursor:pointer;"
 </div>"""
 
 
-def create_skyview_metadata_ui(tpf, ztf_search_radius):
+def create_skyview_metadata_ui(tpf, ztf_search_radius, skypatrol2_search_radius):
     if tpf is None:
         return Div(name="skyview_metadata", text="")
 
@@ -364,7 +364,7 @@ See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handboo
         Brightness at {tpf.time.format.upper()} {tpf.time[0].value:.2f} ({cur_time_relative:.2f} d in the sector)<br>
         {unreliable_pixels_warn_msg}
         {show_tpf_orientation_html(tpf)}
-        <br>ZTF search radius: {ztf_search_radius}<br>
+        <br>ZTF search radius: {ztf_search_radius}, ASAS-SN SkyPatrol v2 search radius: {skypatrol2_search_radius}<br>
     </details>
 </div>
 """)
@@ -481,6 +481,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
     vizier_server = vizier.conf.server
     ztf_search_radius = 90 * u.arcsec
+    skypatrol2_search_radius = 90 * u.arcsec
     create_skyview_ui = show_skyview_widget(
         tpf,
         aperture_mask=tpf.pipeline_mask,
@@ -500,6 +501,11 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
             ),
 
             (
+                "skypatrol2",
+                dict(radius=skypatrol2_search_radius)
+            ),
+
+            (
                 "ztf",
                 dict(radius=ztf_search_radius)
             ),
@@ -511,7 +517,11 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
     return column(
         await create_skyview_ui(),
-        create_skyview_metadata_ui(tpf, ztf_search_radius),
+        create_skyview_metadata_ui(
+            tpf,
+            ztf_search_radius=ztf_search_radius,
+            skypatrol2_search_radius=skypatrol2_search_radius,
+        ),
         create_lc_viewer_ui(),
         # the name is used to signify an interactive UI is returned
         # (as opposed to the UI with a dummy UI or error message in the boundary conditions)
