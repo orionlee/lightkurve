@@ -33,4 +33,10 @@ echo Note:   The first deployment, the app  would not work, returning blank page
 echo         with errors in developer console suggesting failure in opening websockets.
 echo Action: In gcloud service dashboard, add environment variable BOKEH_ALLOW_WS_ORIGIN,
 echo         set it to the public hostname of the deployed service, and deploy again.
-
+echo
+echo Additional envrionment variables reocommended:
+echo 1. Use CDN to serve bokeh assets: javascripts, etc.
+echo BOKEH_RESOURCES=cdn
+echo 2. Define the Python log level of the webapp, e.g.,
+echo INTERACT_SKY_WEBAPP_LOGLEVEL=INFO
+echo
