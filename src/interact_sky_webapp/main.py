@@ -1,25 +1,22 @@
 import logging
 import os
 
+from astropy.time import Time
 import astropy.units as u
 import astroquery.vizier as vizier
+
+import numpy as np
 
 import lightkurve as lk
 from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 from .tpf_utils import get_tpf, is_tesscut
+from .lc_utils import read_lc, guess_lc_source
 
 from bokeh.layouts import row, column
 from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox
 from bokeh.plotting import curdoc
 
-
-# import lines for read_ztf_csv
-import re
-import warnings
-from astropy.time import Time
-from astropy.table import Table
-import numpy as np
 
 log = logging.getLogger(__name__)
 
@@ -36,103 +33,9 @@ def set_log_level_from_env():
     return level_str
 
 
-def read_ztf_csv(
-    url=None,
-    time_column="hjd",
-    time_format="jd",
-    time_scale="utc",
-    flux_column="mag",
-    flux_err_column="magerr",
-    mask_func=lambda lc: lc["catflags"] != 0,
-):
-    """Return ZTF Archive lightcurve files in IPAC Table csv.
-
-    Parameters
-    ----------
-    mask_func : function, optional
-        a function that returns a boolean mask given a `Lightcurve` object
-        of the data. Cadences with `True` will be masked out.
-        Pass `None` to disable masking.
-        The default is to exclude cadences where `catflags` is not 0, the
-        guideline for VSX submission.
-        https://www.aavso.org/vsx/index.php?view=about.notice
-    """
-    # Note: First tried to read ZTF's ipac table .tbl, but got
-    #   TypeError: converter type does not match column type
-    # due to: https://github.com/astropy/astropy/issues/15989
-
-    def get_required_column(tab, colname):
-        if colname not in tab.colnames:
-            raise ValueError(f"Required column {colname} is not found")
-        return tab[colname]
-
-    def filter_rows_with_invalid_time(tab, colname):
-        # Some times the time value is nan for unknown reason. E.g.,
-        # https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves?ID=848110200002484&COLLECTION=ztf_dr20&FORMAT=csv
-        # some hjd values are nan, even though there is mjd value
-        filtered = tab[np.isfinite(tab[colname])]
-        num_rows_filtered = len(tab) - len(filtered)
-        if num_rows_filtered > 0:
-            warnings.warn(f"{num_rows_filtered} skipped because they do not have valid time values.", lk.LightkurveWarning)
-        return filtered
-
-    tab = Table.read(
-        url,
-        format="ascii.csv",
-        converters={
-            "oid": np.int64,
-            "expid": np.int64,
-            "filefracday": np.int64,
-        },
-    )
-
-    tab = filter_rows_with_invalid_time(tab, time_column)
-
-    time = get_required_column(tab, time_column)
-    time = Time(time, format=time_format, scale=time_scale)
-    flux = get_required_column(tab, flux_column)
-    flux_err = get_required_column(tab, flux_err_column)
-
-    lc = lk.LightCurve(
-        time=time,
-        flux=flux,
-        flux_err=flux_err,
-        data=tab,
-    )
-
-    # assign units
-    for col in ["flux", "flux_err", flux_column, flux_err_column, "limitmag"]:
-        if col in lc.colnames:
-            lc[col] = lc[col] * u.mag
-
-    lc.meta.update(
-        {
-            "FILEURL": url,
-            "FLUX_ORIGIN": flux_column,
-            "TIME_ORIGIN": time_column,
-        }
-    )
-
-    oid_match = re.search(r"https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves.+ID=(\d+)", url)
-    if oid_match is not None:
-        id = f"ZTF OID {oid_match[1]}"  # include data release number too?
-        lc.meta["OBJECT"] = id
-        lc.meta["LABEL"] = id
-
-    if mask_func is not None:
-        mask = mask_func(lc)
-        lc = lc[~mask]
-
-    return lc
-
-
 def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_folded=False):
     try:
-        lc = read_ztf_csv(url)
-
-        if "filtercode" in lc.colnames:  # include ZTF filter in label for title
-            filter_str = ",".join(np.unique(lc["filtercode"]))
-            lc.label += f" ({filter_str})"
+        lc = read_lc(url)
 
         if period is not None:
             if epoch is not None:
@@ -205,21 +108,23 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
             log.warning(f"IOError (likely intermittent) of type {type(e).__name__} in loading ZTF lc: {url}")
         else:
             # other unexpected errors that might mean bugs on our end.
-            log.error(f"Error of type {type(e).__name__} in loading ZTF lc: {url}", exc_info=True)
+            log.error(f"Error of type {type(e).__name__} in loading lc: {url}", exc_info=True)
         # traceback.print_exc()  # for server side debug
         err_msg = f"Error in loading lightcurve. {type(e).__name__}: {e}"
-        if not url.startswith("https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves"):
+        if guess_lc_source(url) is None:
             # helpful in cases users copy-and-paste a wrong link
             err_msg += (
-                "<br>The URL does not seem to be a valid ZTF lightcurve URL, "
-                "which starts with <code>https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves</code> ."
+                "<br>The URL does not seem to be an ASAS-SN SkyPatrol v2 URL "
+                "(starts with <code>http://asas-sn.ifa.hawaii.edu/skypatrol/objects/</code>), "
+                "<br>or a valid ZTF lightcurve URL "
+                "(starts with <code>https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves</code>)."
             )
         return Div(text=err_msg, name="lc_fig")
 
 
 def create_lc_viewer_ui():
     in_url = TextInput(
-        width=600, placeholder="ZTF Lightcurve CSV URL (the LC link to the right of ZTF OID)",
+        width=600, placeholder="ZTF Lightcurve CSV URL (the LC link to the right of ZTF OID), or ASAS-SN SkyPatrol v2 URL (the SkyPatrol v2 link)",
         # value="https://irsa.ipac.caltech.edu/cgi-bin/ZTF/nph_light_curves?ID=660106400019009&COLLECTION=ztf_dr21&FORMAT=csv",  # TST
     )
 
