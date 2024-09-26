@@ -1,3 +1,4 @@
+from functools import lru_cache
 import logging
 import os
 import warnings
@@ -34,9 +35,20 @@ def set_log_level_from_env():
     return level_str
 
 
+@lru_cache(20)  # in a single session, users generally will inspect a handful of LCs at most.
+def _do_read_lc(url):
+    """A wrapper of `read_lc()` that supports caching of lightcurves, so that
+    if an users switches back and forth between a few of them
+    in a session, there'd be no need to repeatedly get the data
+    remotely again (from ZTF, SkyPatrol, etc.)
+    """
+    return read_lc(url)
+
+
 def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_folded=False):
+    log.info(f"Plot LC: {url}, period={period}, epoch={epoch}, epoch_format={epoch_format}, use_cmap={use_cmap_for_folded}")
     try:
-        lc = read_lc(url)
+        lc = _do_read_lc(url)
 
         if period is not None:
             if epoch is not None:
@@ -366,7 +378,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
         return Div(text=f"<h3>SkyView</h3> Cannot find Pixel data for {msg_label}", name="skyview")
 
     # set at info level, as it might be useful to gather statistics on the type of tpfs being plotted ()
-    log.info(f"Plot: {tpf}, sector={tpf.meta.get('SECTOR')}, exptime={sr.exptime[-1]}, TessCut={is_tesscut(tpf)}")
+    log.info(f"Plot Skyview: {tpf}, sector={tpf.meta.get('SECTOR')}, exptime={sr.exptime[-1]}, TessCut={is_tesscut(tpf)}")
 
     if magnitude_limit is None:
         # supply default
