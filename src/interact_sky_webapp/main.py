@@ -15,6 +15,7 @@ from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 from .tpf_utils import get_tpf, is_tesscut
 from .lc_utils import read_lc, guess_lc_source
 
+import bokeh
 from bokeh.layouts import row, column
 from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox
 from bokeh.plotting import curdoc
@@ -126,6 +127,10 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
             lc_source.data["fill_color"] = [_to_color(f) for f in lc["phot_filter"]]
             r_lc_circle.glyph.fill_color = "fill_color"
             r_lc_circle.nonselection_glyph.fill_color = "fill_color"
+
+        # enable box_zoom_tool by default
+        box_zoom_tools = [t for t in fig_lc.toolbar.tools if isinstance(t, bokeh.models.BoxZoomTool)]
+        fig_lc.toolbar.active_drag = box_zoom_tools[0] if len(box_zoom_tools) > 0 else "auto"
 
         return fig_lc
     except Exception as e:
