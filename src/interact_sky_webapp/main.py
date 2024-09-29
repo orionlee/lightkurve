@@ -113,6 +113,19 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
             color_bar = ColorBar(color_mapper=time_cmap, location=(0, 0), formatter=NumeralTickFormatter(format="0,0"))
             fig_lc.add_layout(color_bar, "right")
             fig_lc.width += 100  # extra horizontal space for the color bar
+        elif "phot_filter" in lc.colnames:
+            # case ASAS-SN lightcurve, no colormap used, mimic color scheme used by SkyPatrol v2 website
+            def _to_color(filter):
+                if filter == "V":
+                    return "teal"
+                elif filter == "g":
+                    return "mediumblue"
+                else:  # last resort
+                    return "gray"
+
+            lc_source.data["fill_color"] = [_to_color(f) for f in lc["phot_filter"]]
+            r_lc_circle.glyph.fill_color = "fill_color"
+            r_lc_circle.nonselection_glyph.fill_color = "fill_color"
 
         return fig_lc
     except Exception as e:
