@@ -277,7 +277,7 @@ transform: rotate({-deg_from_north}deg);transform-origin: left; cursor:pointer;"
 </div>"""
 
 
-def create_skyview_metadata_ui(tpf, ztf_search_radius, skypatrol2_search_radius):
+def create_skyview_metadata_ui(tpf, ztf_search_radius, ztf_ngoodobsrel_min, skypatrol2_search_radius):
     if tpf is None:
         return Div(name="skyview_metadata", text="")
 
@@ -300,7 +300,10 @@ See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handboo
         Brightness at {tpf.time.format.upper()} {tpf.time[0].value:.2f} ({cur_time_relative:.2f} d in the sector)<br>
         {unreliable_pixels_warn_msg}
         {show_tpf_orientation_html(tpf)}
-        <br>ZTF search radius: {ztf_search_radius}, ASAS-SN SkyPatrol v2 search radius: {skypatrol2_search_radius}<br>
+        <br>
+        ZTF search radius: {ztf_search_radius}, min. # good observations: {ztf_ngoodobsrel_min} ;
+        ASAS-SN SkyPatrol v2 search radius: {skypatrol2_search_radius}
+        <br>
     </details>
 </div>
 """)
@@ -417,6 +420,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
     vizier_server = vizier.conf.server
     ztf_search_radius = 90 * u.arcsec
+    ztf_ngoodobsrel_min = 200
     skypatrol2_search_radius = 90 * u.arcsec
     catalogs = [
         (
@@ -439,7 +443,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
 
         (
             "ztf",
-            dict(radius=ztf_search_radius)
+            dict(radius=ztf_search_radius, ngoodobsrel_min=ztf_ngoodobsrel_min)
         ),
 
         "vsx",
@@ -461,6 +465,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
             create_skyview_metadata_ui(
                 tpf,
                 ztf_search_radius=ztf_search_radius,
+                ztf_ngoodobsrel_min=ztf_ngoodobsrel_min,
                 skypatrol2_search_radius=skypatrol2_search_radius,
             ),
             create_lc_viewer_ui(),
