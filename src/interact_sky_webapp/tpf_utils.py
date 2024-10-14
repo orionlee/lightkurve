@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 import astropy.units as u
 
@@ -13,6 +14,19 @@ async def _do_download_tesscut(sr):
     # TODO: query TIC catalog to backfill proper motion / TESSMAG
     # (used by the webapp)
     tpf = sr[-1].download(cutout_size=cutout_size)
+
+    try:
+        # tweaks to make it look like SPOC-produced TPF
+        tic = int(sr.target_name[-1].replace("TIC", ""))
+        tpf.hdu[0].header["TICID"] = tic
+        tpf.hdu[0].header["LABEL"] = f"TIC {tic}"
+        tpf.hdu[0].header["OBJECT"] = f"TIC {tic}"
+        tpf.meta = lk.targetpixelfile.HduToMetaMapping(tpf.hdu[0])
+    except Exception as e:
+        warnings.warn(
+            "Unexpected error in extracting TIC from TessCut SearchResult. TIC will not be shown."
+            f" Error: {e}"
+        )
     return tpf
 
 
