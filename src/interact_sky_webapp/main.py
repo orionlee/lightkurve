@@ -17,7 +17,7 @@ from .lc_utils import read_lc, guess_lc_source
 
 import bokeh
 from bokeh.layouts import row, column
-from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox
+from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox, Spacer
 from bokeh.plotting import curdoc
 
 
@@ -327,9 +327,9 @@ def create_tpf_interact_ui(tpf):
         Div(text="<h3>Pixels Inspection</h3>"),
         row(
             btn_inspect,
-            Div(width=10),  # spacer
+            Spacer(width=10),
             in_flux_normalized,
-            Div(width=20),  # spacer
+            Spacer(width=20),
             Div(text="y min."), in_ymin, Div(text="y max."), in_ymax,
         ),
         name="tpf_interact_ctl_ctr",
@@ -356,16 +356,18 @@ def create_tpf_interact_ui(tpf):
 
         create_tpf_interact_ui = show_interact_widget(
             tpf,
-            # don't remove any outliers, users can choose to limit them manually
             ylim_func=ylim_func,
             transform_func=transform_func,
             return_type="doc_init_fn"
             )
 
-        # TODO: hide Save lightcurve button
-
         ui_body = await create_tpf_interact_ui()
         ui_body.name = "tpf_interact_fig"
+
+        # hide "Save lightcurve" button (not applicable in Web UI)
+        save_lc_btn = ui_body.select_one({"label": "Save Lightcurve"})
+        if save_lc_btn is not None:
+            save_lc_btn.visible = False
 
         # add the plot (replacing existing plot, if any)
         old_fig = ui_layout.select_one({"name": "tpf_interact_fig"})
