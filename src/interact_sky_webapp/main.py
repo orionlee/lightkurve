@@ -204,18 +204,14 @@ def create_lc_viewer_ui():
     def add_lc_fig():
         url = in_url.value
 
-        period = in_period.value
-        # convert to optional float
-        period = float(period) if period != "" else None
+        period = get_value_in_float(in_period, None)
         if period is not None and period <= 0:
             # ignore non-positive period
             # so users could switch between folded and non-folded LC
             # by adding a minus sign to the period, without completely losing the value.
             period = None
 
-        epoch = in_epoch.value
-        # convert to optional float
-        epoch = float(epoch) if epoch != "" else None
+        epoch = get_value_in_float(in_epoch, None)
         epoch_format = in_epoch_format.value
 
         use_cmap_for_folded = in_use_cmap_for_folded.active
