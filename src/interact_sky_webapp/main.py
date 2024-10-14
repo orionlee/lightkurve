@@ -10,7 +10,7 @@ import astroquery.vizier as vizier
 import numpy as np
 
 import lightkurve as lk
-from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements
+from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements, show_interact_widget
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 from .tpf_utils import get_tpf, is_tesscut
 from .lc_utils import read_lc, guess_lc_source
@@ -180,7 +180,7 @@ def create_lc_viewer_ui():
 
     ui_layout = column(
         Div(text="<hr>"),  # a spacer
-        Div(text="<h3>Lightcurve</h3>"),
+        Div(text="<h3>Lightcurve<span style='font-weight: normal; font-size: 90%;'> from ZTF or SkyPatrol v2</span></h3>"),
         row(Div(text="URL *"), in_url),
         row(
             Div(text="Period (d)"), in_period, Div(text="epoch"), in_epoch, in_epoch_format,
@@ -307,6 +307,53 @@ See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handboo
     </details>
 </div>
 """)
+
+
+def create_tpf_interact_ui(tpf):
+    btn_inspect = Button(label="Inspect", button_type="primary")
+
+    ui_layout = column(
+        Div(text="<hr>"),  # a spacer
+        Div(text="<h3>Pixels Inspection</h3>"),
+        row(btn_inspect),
+        name="tpf_interact_ctl_ctr",
+    )
+
+    # add interactivity
+    async def add_tpf_interact_fig():
+        create_tpf_interact_ui = show_interact_widget(
+            tpf,
+            # TODO: ylim_func, transform_func, etc.
+            return_type="doc_init_fn"
+            )
+
+        # TODO: hide Save lightcurve button
+
+        ui_body = await create_tpf_interact_ui()
+        ui_body.name = "tpf_interact_fig"
+
+        # add the plot (replacing existing plot, if any)
+        old_fig = ui_layout.select_one({"name": "tpf_interact_fig"})
+        if old_fig is not None:
+            # https://discourse.bokeh.org/t/clearing-plot-or-removing-all-glyphs/6792/6
+            ui_layout.children[-1] = ui_body
+        else:
+            ui_layout.children.append(ui_body)
+
+    def add_tpf_interact_fig_with_msg():
+        # immediately show a message, as the actual plotting would take time
+        msg_ui = Div(text="Plotting...", name="tpf_interact_fig")
+        old_fig = ui_layout.select_one({"name": "tpf_interact_fig"})
+        if old_fig is not None:
+            # https://discourse.bokeh.org/t/clearing-plot-or-removing-all-glyphs/6792/6
+            ui_layout.children[-1] = msg_ui
+        else:
+            ui_layout.children.append(msg_ui)
+        curdoc().add_next_tick_callback(add_tpf_interact_fig)
+
+    btn_inspect.on_click(add_tpf_interact_fig_with_msg)
+
+    return ui_layout
 
 
 def create_search_form(tic, sector, magnitude_limit):
@@ -468,6 +515,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
                 ztf_ngoodobsrel_min=ztf_ngoodobsrel_min,
                 skypatrol2_search_radius=skypatrol2_search_radius,
             ),
+            create_tpf_interact_ui(tpf),
             create_lc_viewer_ui(),
             # the name is used to signify an interactive UI is returned
             # (as opposed to the UI with a dummy UI or error message in the boundary conditions)
