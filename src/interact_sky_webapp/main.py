@@ -36,6 +36,16 @@ def set_log_level_from_env():
     return level_str
 
 
+def get_value_in_float(input: TextInput, default=None):
+    val = input.value
+    try:
+        val = float(val) if val != "" else default
+    except Exception as _:
+        # Non float value, treat it as default
+        val = default
+    return val
+
+
 @lru_cache(20)  # in a single session, users generally will inspect a handful of LCs at most.
 def _do_read_lc(url):
     """A wrapper of `read_lc()` that supports caching of lightcurves, so that
@@ -312,18 +322,47 @@ See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handboo
 def create_tpf_interact_ui(tpf):
     btn_inspect = Button(label="Inspect", button_type="primary")
 
+    in_flux_normalized = Checkbox(label="normalized", active=True)
+    in_ymin = TextInput(width=100, placeholder="optional")
+    in_ymax = TextInput(width=100, placeholder="optional")
+
     ui_layout = column(
         Div(text="<hr>"),  # a spacer
         Div(text="<h3>Pixels Inspection</h3>"),
-        row(btn_inspect),
+        row(
+            btn_inspect,
+            Div(width=10),  # spacer
+            in_flux_normalized,
+            Div(width=20),  # spacer
+            Div(text="y min."), in_ymin, Div(text="y max."), in_ymax,
+        ),
         name="tpf_interact_ctl_ctr",
     )
 
     # add interactivity
     async def add_tpf_interact_fig():
+
+        # flux: either normalized or raw e-/s
+        def transform_func(lc):
+            return lc.normalize() if in_flux_normalized.active else lc
+
+        def ylim_func(lc):
+            unit = lc.flux.unit
+            ymin = get_value_in_float(in_ymin, np.nanmin(lc.flux).value)
+            ymax = get_value_in_float(in_ymax, np.nanmax(lc.flux).value)
+            return (ymin * unit, ymax * unit)
+
+        # ^^^ for transform_func() and ylim_func
+        #     read users input during execution (inside function body)
+        #     so that if users changes the value, they will be
+        #     reflected when users changes the LC by selecting different pixels
+        #     (without the need to click inspect button again)
+
         create_tpf_interact_ui = show_interact_widget(
             tpf,
-            # TODO: ylim_func, transform_func, etc.
+            # don't remove any outliers, users can choose to limit them manually
+            ylim_func=ylim_func,
+            transform_func=transform_func,
             return_type="doc_init_fn"
             )
 
