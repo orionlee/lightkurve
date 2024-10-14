@@ -963,6 +963,7 @@ def show_interact_widget(
     vmax=None,
     scale="log",
     cmap="Viridis256",
+    return_type=None,
 ):
     """Display an interactive Jupyter Notebook widget to inspect the pixel data.
 
@@ -1090,7 +1091,7 @@ def show_interact_widget(
             "`tpf[0:1000].interact()`, to make interact run faster."
         )
 
-    def create_interact_ui(doc):
+    def create_interact_ui():
         # The data source includes metadata for hover-over tooltips
         lc_source = prepare_lightcurve_datasource(lc)
         tpf_source = prepare_tpf_datasource(tpf, aperture_mask)
@@ -1263,10 +1264,23 @@ def show_interact_widget(
             [l_button, sp1, r_button, sp2, cadence_slider, sp3, stretch_slider],
             [export_button, sp4, message_on_save],
         )
-        doc.add_root(widgets_and_figures)
+        return widgets_and_figures
 
-    output_notebook(verbose=False, hide_banner=True)
-    return show(create_interact_ui, notebook_url=notebook_url)
+    if return_type is None:
+        def create_interact_ui_at_doc(doc):
+            doc.add_root(create_interact_ui())
+
+        output_notebook(verbose=False, hide_banner=True)
+        return show(create_interact_ui_at_doc, notebook_url=notebook_url)
+    elif return_type == "doc_init_fn":
+        # the returned function does not need to be async
+        # but async is used to create parity with show_skyview_widget()
+        async def async_create_interact_ui():
+            return create_interact_ui()
+
+        return async_create_interact_ui
+    else:
+        raise ValueError(f"Unsupported return_type : {return_type}")
 
 
 def _create_select_catalog_ui(providers, catalog_renderers):
