@@ -91,7 +91,7 @@ def make_lc_fig(url, period=None, epoch=None, epoch_format=None, use_cmap_for_fo
         else:
             fig_lc.xaxis.axis_label = f"Time [{lc.time.format.upper()}]"
             # show HJD time in plain numbers, rather than in scientific notation.
-            fig_lc.xaxis.formatter = NumeralTickFormatter(format="0,0")
+            fig_lc.xaxis.formatter = NumeralTickFormatter(format="0,0.00")
 
         if lc.flux.unit is u.mag:
             fig_lc.yaxis.axis_label = "Mag"
