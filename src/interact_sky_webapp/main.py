@@ -364,6 +364,14 @@ def create_tpf_interact_ui(tpf):
         ui_body = await create_tpf_interact_ui()
         ui_body.name = "tpf_interact_fig"
 
+        # enable box_zoom_tool by default
+        try:
+            fig_lc = ui_body.children[0].children[0]  # hack: assuming the widgets layout returned by show_interact_widget()
+            box_zoom_tools = [t for t in fig_lc.toolbar.tools if isinstance(t, bokeh.models.BoxZoomTool)]
+            fig_lc.toolbar.active_drag = box_zoom_tools[0] if len(box_zoom_tools) > 0 else "auto"
+        except Exception as e:
+            warnings.warn(f"Failed to enable box zoom as default for tpf.interact() LC viewer. {e}")
+
         # hide "Save lightcurve" button (not applicable in Web UI)
         save_lc_btn = ui_body.select_one({"label": "Save Lightcurve"})
         if save_lc_btn is not None:
