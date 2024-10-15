@@ -29,7 +29,7 @@ def set_log_level_from_env():
 
     # use Python standard string constant in
     #  https://docs.python.org/3/howto/logging.html
-    level_str = os.environ.get("INTERACT_SKY_WEBAPP_LOGLEVEL", None)
+    level_str = os.environ.get("TESS_TPF_WEBAPP_LOGLEVEL", None)
     if level_str:
         log.setLevel(level_str)
         tpf_utils_log.setLevel(level_str)
