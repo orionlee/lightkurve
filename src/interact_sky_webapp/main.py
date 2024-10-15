@@ -315,6 +315,26 @@ See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handboo
 """)
 
 
+def export_plt_fig_as_data_uri(fig, close_fig=True):
+    import base64
+    from io import BytesIO
+    import matplotlib.pyplot as plt
+
+    buf = BytesIO()  # a temporary buffer
+    fig.savefig(buf, format="png")
+    data = base64.b64encode(buf.getbuffer()).decode("ascii")
+    uri = f"data:image/png;base64,{data}"
+
+    # to avoid memory leaks,
+    # as figures created by pyplot are kept in memory by default
+    # see: https://matplotlib.org/stable/gallery/user_interfaces/web_application_server_sgskip.html
+    if close_fig:
+        # https://stackoverflow.com/a/49748374
+        fig.clear()  # fig.clf()
+        plt.close(fig)
+    return uri
+
+
 def create_tpf_interact_ui(tpf):
     btn_inspect = Button(label="Inspect", button_type="primary")
 
@@ -377,6 +397,66 @@ def create_tpf_interact_ui(tpf):
         if save_lc_btn is not None:
             save_lc_btn.visible = False
 
+        # add UI and functions for per-pixel plot
+        btn_plot_per_pixels = Button(label="Per-Pixel Plot", button_type="success")
+        out_plot_per_pixels = Div(text="", name="per_pixel_plot_fig")
+
+        ui_body.children.append(row(btn_plot_per_pixels, out_plot_per_pixels))
+
+        def plot_per_pixels():
+            import matplotlib.pyplot as plt
+
+            xstart, xend = fig_lc.x_range.start, fig_lc.x_range.end
+            tpf_trunc = tpf
+            tpf_trunc = tpf_trunc[tpf_trunc.time.value >= xstart]
+            tpf_trunc = tpf_trunc[tpf_trunc.time.value <= xend]
+
+            pixel_size_inches = 0.6
+
+            def get_default_marker_size_for_pixels_plot(tpf, pixel_size_inches):
+                plot_duration = (tpf.time.max() - tpf.time.min()).value
+                scale = 0.5 / plot_duration
+                return pixel_size_inches * scale
+
+            markersize = round(get_default_marker_size_for_pixels_plot(tpf_trunc, pixel_size_inches), 1)
+            if markersize < 0.05:
+                markersize = 0.05
+
+            shape = tpf_trunc.flux[0].shape
+            fig = plt.figure(figsize=(shape[1] * pixel_size_inches, shape[0] * pixel_size_inches))
+            ax = tpf_trunc.plot_pixels(
+                ax=fig.gca(),
+                aperture_mask=tpf_trunc.pipeline_mask,
+                show_flux=True,
+                markersize=markersize,
+                # OPEN: add corrector_func to obey ylim_func?!
+            )
+            ax.set_title((
+                f"TIC {tpf_trunc.meta.get('TICID')}, "
+                f"Sector {tpf_trunc.meta.get('SECTOR')}, "
+                f"Camera {tpf_trunc.meta.get('CAMERA')}.{tpf_trunc.meta.get('CCD')}, "
+                f"{tpf_trunc.time.min().value:.2f} - {tpf_trunc.time.max().value:.2f} [{tpf_trunc.time.format.upper()}] "
+            ),
+                fontsize=12,
+            )
+
+            img_html = f'<img src="{export_plt_fig_as_data_uri(fig)}" />'
+            out_plot_per_pixels.text = img_html
+
+        def plot_per_pixels_with_msg():
+            msg = "Creating per-pixel plot..."
+            xduration = fig_lc.x_range.end - fig_lc.x_range.start
+            if xduration > 5:
+                msg += f"""
+<br> <span style="background-color: yellow;">Note:</span> Plotting over a long time range of {xduration:.1f} days. Consider to shorten the range.
+<br> A plot over a long time range is less legible, and it takes longer to create one.
+"""
+            out_plot_per_pixels.text = msg
+            curdoc().add_next_tick_callback(plot_per_pixels)
+
+        btn_plot_per_pixels.on_click(plot_per_pixels_with_msg)
+
+        # interact() plot done
         # add the plot (replacing existing plot, if any)
         old_fig = ui_layout.select_one({"name": "tpf_interact_fig"})
         if old_fig is not None:
