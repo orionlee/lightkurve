@@ -357,6 +357,7 @@ def create_tpf_interact_ui(tpf):
 
     # add interactivity
     async def add_tpf_interact_fig():
+        log.info(f"Plot tpf interact: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}")
 
         # flux: either normalized or raw e-/s
         def transform_func(lc):
@@ -405,6 +406,8 @@ def create_tpf_interact_ui(tpf):
 
         def plot_per_pixels():
             import matplotlib.pyplot as plt
+
+            log.info(f"Plot per pixels: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}")
 
             xstart, xend = fig_lc.x_range.start, fig_lc.x_range.end
             tpf_trunc = tpf
