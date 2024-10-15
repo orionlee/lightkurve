@@ -413,9 +413,11 @@ def create_tpf_interact_ui(tpf):
 
             pixel_size_inches = 0.6
 
+            # scale marker size based on time range
+            # (a proxy of number of dots to show)
             def get_default_marker_size_for_pixels_plot(tpf, pixel_size_inches):
                 plot_duration = (tpf.time.max() - tpf.time.min()).value
-                scale = 0.5 / plot_duration
+                scale = 2.0 / plot_duration
                 return pixel_size_inches * scale
 
             markersize = round(get_default_marker_size_for_pixels_plot(tpf_trunc, pixel_size_inches), 1)
