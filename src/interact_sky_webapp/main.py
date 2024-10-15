@@ -357,6 +357,7 @@ def create_tpf_interact_ui(tpf):
 
     # add interactivity
     async def add_tpf_interact_fig():
+
         log.info(f"Plot tpf interact: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}")
 
         # flux: either normalized or raw e-/s
@@ -369,7 +370,7 @@ def create_tpf_interact_ui(tpf):
             ymax = get_value_in_float(in_ymax, np.nanmax(lc.flux).value)
             return (ymin * unit, ymax * unit)
 
-        # ^^^ for transform_func() and ylim_func
+        # ^^^ for transform_func() and ylim_func()
         #     read users input during execution (inside function body)
         #     so that if users changes the value, they will be
         #     reflected when users changes the LC by selecting different pixels
@@ -407,9 +408,12 @@ def create_tpf_interact_ui(tpf):
         def plot_per_pixels():
             import matplotlib.pyplot as plt
 
-            log.info(f"Plot per pixels: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}")
-
             xstart, xend = fig_lc.x_range.start, fig_lc.x_range.end
+            log.info(
+                f"Plot per pixels: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}"
+                f", time_range={xend - xstart:.1f}d"
+                )
+
             tpf_trunc = tpf
             tpf_trunc = tpf_trunc[tpf_trunc.time.value >= xstart]
             tpf_trunc = tpf_trunc[tpf_trunc.time.value <= xend]
@@ -737,5 +741,5 @@ sector = get_arg_as_int(args, "sector", None)
 magnitude_limit = get_arg_as_float(args, "magnitude_limit", None)
 log.debug(f"Parameters: , {tic}, {sector}, {magnitude_limit} ; {args}")
 
-curdoc().title = "TESS SkyView with Gaia DR3, ZTF and VSX"
+curdoc().title = "TESS Target Pixels Inspector"
 show_app(tic, sector, magnitude_limit)
