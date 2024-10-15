@@ -393,9 +393,9 @@ def create_tpf_interact_ui(tpf):
             warnings.warn(f"Failed to enable box zoom as default for tpf.interact() LC viewer. {e}")
 
         # hide "Save lightcurve" button (not applicable in Web UI)
-        save_lc_btn = ui_body.select_one({"label": "Save Lightcurve"})
-        if save_lc_btn is not None:
-            save_lc_btn.visible = False
+        btn_save_lc = ui_body.select_one({"label": "Save Lightcurve"})
+        if btn_save_lc is not None:
+            btn_save_lc.visible = False
 
         # add UI and functions for per-pixel plot
         btn_plot_per_pixels = Button(label="Per-Pixel Plot", button_type="success")
