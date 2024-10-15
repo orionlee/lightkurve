@@ -332,7 +332,7 @@ def create_tpf_interact_ui(tpf):
             Spacer(width=20),
             Div(text="y min."), in_ymin, Div(text="y max."), in_ymax,
         ),
-        name="tpf_interact_ctl_ctr",
+        name="tpf_interact_ctr",
     )
 
     # add interactivity
@@ -468,6 +468,7 @@ async def create_app_body_ui(tic, sector, magnitude_limit=None):
     if tic is None:
         return column(
             Div(text="<h3>Skyview</h3>", name="skyview"),
+            Div(text="<h3>Pixels Inspection</h3>", name="tpf_interact_ctr"),
             Div(text="<h3>Lightcurve</h3>", name="lc_viewer"),
         )
 
