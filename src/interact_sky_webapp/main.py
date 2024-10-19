@@ -339,6 +339,11 @@ def create_tpf_interact_ui(tpf):
     btn_inspect = Button(label="Inspect", button_type="primary")
 
     in_flux_normalized = Checkbox(label="normalized", active=True)
+    # optional for Tesscut, an approximate background subtracted for quick look
+    in_bkg_subtraction = Checkbox(
+        label="background subtracted",
+        visible=is_tesscut(tpf),
+        active=False)
     in_ymin = TextInput(width=100, placeholder="optional")
     in_ymax = TextInput(width=100, placeholder="optional")
 
@@ -349,6 +354,7 @@ def create_tpf_interact_ui(tpf):
             btn_inspect,
             Spacer(width=10),
             in_flux_normalized,
+            in_bkg_subtraction,
             Spacer(width=20),
             Div(text="y min."), in_ymin, Div(text="y max."), in_ymax,
         ),
@@ -360,8 +366,22 @@ def create_tpf_interact_ui(tpf):
 
         log.info(f"Plot tpf interact: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}")
 
+        def create_background_lc(tpf, num_pixels):
+            """Helper for a rough background subtraction"""
+            # based on:
+            # https://github.com/lightkurve/lightkurve/blob/main/docs/source/tutorials/2-creating-light-curves/2-1-cutting-out-tpfs.ipynb
+            background_mask = ~tpf.create_threshold_mask(threshold=0.001, reference_pixel=None)
+            n_background_pixels = background_mask.sum()  # TODO: handle edge case 0 pixels are picked
+            background_lc_per_pixel = tpf.to_lightcurve(aperture_mask=background_mask) / n_background_pixels
+            background_estimate_lc = background_lc_per_pixel * num_pixels  # in e-/s
+            return background_estimate_lc
+
+        tpf_bkg_per_pixel_lc = create_background_lc(tpf, 1)  # for optional bkg subtraction in TessCut case
+
         # flux: either normalized or raw e-/s
         def transform_func(lc):
+            if in_bkg_subtraction.active:
+                lc = lc - tpf_bkg_per_pixel_lc * lc.meta["APERTURE_MASK"].sum()
             return lc.normalize() if in_flux_normalized.active else lc
 
         def ylim_func(lc):
@@ -418,6 +438,14 @@ def create_tpf_interact_ui(tpf):
             tpf_trunc = tpf_trunc[tpf_trunc.time.value >= xstart]
             tpf_trunc = tpf_trunc[tpf_trunc.time.value <= xend]
 
+            tpf_trunc_bkg_per_pixel_lc = tpf_bkg_per_pixel_lc.truncate(xstart, xend)
+
+            def corrector_func(lc):
+                if in_bkg_subtraction.active:
+                    return lc - tpf_trunc_bkg_per_pixel_lc
+                else:
+                    return lc
+
             pixel_size_inches = 0.6
 
             # scale marker size based on time range
@@ -436,6 +464,7 @@ def create_tpf_interact_ui(tpf):
             ax = tpf_trunc.plot_pixels(
                 ax=fig.gca(),
                 aperture_mask=tpf_trunc.pipeline_mask,
+                corrector_func=corrector_func,
                 show_flux=True,
                 markersize=markersize,
                 # OPEN: add corrector_func to obey ylim_func?!
