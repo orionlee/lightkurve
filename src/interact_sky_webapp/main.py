@@ -551,12 +551,23 @@ def create_search_form(tic, sector, magnitude_limit):
             padding: 4px;
             margin-bottom: 10px;
         }
+        footer {
+            margin-top: 3em;
+            font-size: 90%;
+            padding-left: 10px;
+        }
+        footer details {
+            margin-top: 0.75em;
+        }
+        footer li {
+            margin-left: -16px;
+        }
     </style>
 """
     return column(
         Div(text=f"""
-<div id="search-form-ctr">
 {css_text}
+<div id="search-form-ctr">
     <form>
         TIC *<br>
         <input name="tic" value="{to_str(tic)}" accesskey="/"><br>
@@ -567,6 +578,20 @@ def create_search_form(tic, sector, magnitude_limit):
         <input type="submit" value="Show">
     </form>
 </div>
+<footer>
+    <a href="https://github.com/orionlee/tess_tpf_webapp" target="_blank">Issues / Sources</a>
+    <details>
+        <summary>Data sources</summary>
+        <ul>
+            <li>TESS Pixels <a href="https://archive.stsci.edu/missions-and-data/tess" target="_blank">MAST</a>
+                , <a href="https://mast.stsci.edu/tesscut/" target="_blank">TessCut</a></li>
+            <li>Gaia DR3 on <a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/I/355" target="_blank">Vizier</a></li>
+            <li><a href="https://irsa.ipac.caltech.edu/Missions/ztf.html" target="_blank">ZTF</a> Archive</li>
+            <li>ASAS-SN <a href="http://asas-sn.ifa.hawaii.edu/skypatrol/" target="_blank">Sky Patrol V2</a></li>
+            <li>AAVSO <a href="https://www.aavso.org/vsx/" target="_blank">VSX</a></li>
+        </ul>
+    </details>
+</footer>
 """),
         name="app_search",
     )
