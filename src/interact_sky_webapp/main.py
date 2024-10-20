@@ -396,11 +396,12 @@ def create_tpf_interact_ui(tpf):
         #     reflected when users changes the LC by selecting different pixels
         #     (without the need to click inspect button again)
 
-        create_tpf_interact_ui = show_interact_widget(
+        create_tpf_interact_ui, interact_mask = show_interact_widget(
             tpf,
             ylim_func=ylim_func,
             transform_func=transform_func,
-            return_type="doc_init_fn"
+            return_type="doc_init_fn",
+            also_return_selection_mask=True,
             )
 
         ui_body = await create_tpf_interact_ui()
@@ -465,7 +466,7 @@ def create_tpf_interact_ui(tpf):
             fig = plt.figure(figsize=(shape[1] * pixel_size_inches, shape[0] * pixel_size_inches))
             ax = tpf_trunc.plot_pixels(
                 ax=fig.gca(),
-                aperture_mask=tpf_trunc.pipeline_mask,
+                aperture_mask=interact_mask,
                 corrector_func=corrector_func,
                 show_flux=True,
                 markersize=markersize,
