@@ -964,6 +964,7 @@ def show_interact_widget(
     scale="log",
     cmap="Viridis256",
     return_type=None,
+    also_return_selection_mask=False,
 ):
     """Display an interactive Jupyter Notebook widget to inspect the pixel data.
 
@@ -1068,6 +1069,8 @@ def show_interact_widget(
         aperture_mask[0, 0] = True
 
     lc.meta["APERTURE_MASK"] = aperture_mask
+    # a copy of current pixel current selection for the use of caller
+    selected_mask_to_return = aperture_mask.copy()
 
     if transform_func is not None:
         lc = transform_func(lc)
@@ -1177,10 +1180,12 @@ def show_interact_widget(
                     ylims = _to_unitless(ylim_func(lc_new))
                 fig_lc.y_range.start = ylims[0]
                 fig_lc.y_range.end = ylims[1]
+                np.copyto(selected_mask_to_return,  lc_new.meta["APERTURE_MASK"])  # Update selected_mask_to_return
             else:
                 lc_source.data["flux"] = lc.flux.value * 0.0
                 fig_lc.y_range.start = -1
                 fig_lc.y_range.end = 1
+                selected_mask_to_return.fill(False)  # Update selected_mask_to_return
 
             message_on_save.text = " "
             export_button.button_type = "success"
@@ -1271,14 +1276,19 @@ def show_interact_widget(
             doc.add_root(create_interact_ui())
 
         output_notebook(verbose=False, hide_banner=True)
-        return show(create_interact_ui_at_doc, notebook_url=notebook_url)
+        show(create_interact_ui_at_doc, notebook_url=notebook_url)
+        if also_return_selection_mask:
+            return selected_mask_to_return
     elif return_type == "doc_init_fn":
         # the returned function does not need to be async
         # but async is used to create parity with show_skyview_widget()
         async def async_create_interact_ui():
             return create_interact_ui()
 
-        return async_create_interact_ui
+        if also_return_selection_mask:
+            return async_create_interact_ui, selected_mask_to_return
+        else:
+            return async_create_interact_ui
     else:
         raise ValueError(f"Unsupported return_type : {return_type}")
 
