@@ -1,4 +1,4 @@
-from functools import lru_cache
+from functools import cache, lru_cache
 import logging
 import os
 import warnings
@@ -366,22 +366,22 @@ def create_tpf_interact_ui(tpf):
 
         log.info(f"Plot tpf interact: {tpf}, sector={tpf.meta.get('SECTOR')}, TessCut={is_tesscut(tpf)}")
 
-        def create_background_lc(tpf, num_pixels):
-            """Helper for a rough background subtraction"""
+        # provide background LC via a memoized function so that
+        # 1. it won't be unnecessarily created, and 2. if it's needed, it'll be created once only.
+        @cache
+        def get_bkg_per_pixel_lc():
+            """Helper for a rough background subtraction, used in TessCut TPFs."""
             # based on:
             # https://github.com/lightkurve/lightkurve/blob/main/docs/source/tutorials/2-creating-light-curves/2-1-cutting-out-tpfs.ipynb
             background_mask = ~tpf.create_threshold_mask(threshold=0.001, reference_pixel=None)
             n_background_pixels = background_mask.sum()  # TODO: handle edge case 0 pixels are picked
             background_lc_per_pixel = tpf.to_lightcurve(aperture_mask=background_mask) / n_background_pixels
-            background_estimate_lc = background_lc_per_pixel * num_pixels  # in e-/s
-            return background_estimate_lc
-
-        tpf_bkg_per_pixel_lc = create_background_lc(tpf, 1)  # for optional bkg subtraction in TessCut case
+            return background_lc_per_pixel
 
         # flux: either normalized or raw e-/s
         def transform_func(lc):
             if in_bkg_subtraction.active:
-                lc = lc - tpf_bkg_per_pixel_lc * lc.meta["APERTURE_MASK"].sum()
+                lc = lc - get_bkg_per_pixel_lc() * lc.meta["APERTURE_MASK"].sum()
             return lc.normalize() if in_flux_normalized.active else lc
 
         def ylim_func(lc):
@@ -438,11 +438,13 @@ def create_tpf_interact_ui(tpf):
             tpf_trunc = tpf_trunc[tpf_trunc.time.value >= xstart]
             tpf_trunc = tpf_trunc[tpf_trunc.time.value <= xend]
 
-            tpf_trunc_bkg_per_pixel_lc = tpf_bkg_per_pixel_lc.truncate(xstart, xend)
+            @cache
+            def get_bkg_per_pixel_lc_trunc():
+                return get_bkg_per_pixel_lc().truncate(xstart, xend)
 
             def corrector_func(lc):
                 if in_bkg_subtraction.active:
-                    return lc - tpf_trunc_bkg_per_pixel_lc
+                    return lc - get_bkg_per_pixel_lc_trunc()
                 else:
                     return lc
 
