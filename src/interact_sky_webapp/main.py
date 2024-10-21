@@ -17,7 +17,8 @@ from .lc_utils import read_lc, guess_lc_source
 
 import bokeh
 from bokeh.layouts import row, column
-from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox, Spacer
+from bokeh.models import Button, Div, TextInput, Select, CustomJS, NumeralTickFormatter, ColorBar, LinearColorMapper, Checkbox, Spacer, Tooltip, InlineStyleSheet, HelpButton
+from bokeh.models.dom import HTML
 from bokeh.plotting import curdoc
 
 
@@ -338,6 +339,22 @@ def export_plt_fig_as_data_uri(fig, close_fig=True):
 
 def create_tpf_interact_ui(tpf):
     btn_inspect = Button(label="Inspect", button_type="primary")
+    btn_help_inspect = HelpButton(
+        tooltip=Tooltip(
+            content=HTML("""
+Construct a lightcurve from selected pixels.<br>
+Shift-Click to add to the selections. Ctrl-Shift-Click to remove from the selections.
+"""
+            ),
+            position="right",
+        ),
+        button_type="light",  # make help UI standout less
+        stylesheets=[
+            InlineStyleSheet(  # make help UI to be closer to the inspect button
+                css="button { margin-left: -6px !important; padding-left: 0px !important; }"
+            )
+        ]
+    )
 
     in_flux_normalized = Checkbox(label="normalized", active=True)
     # optional for Tesscut, an approximate background subtracted for quick look
@@ -353,6 +370,7 @@ def create_tpf_interact_ui(tpf):
         Div(text="<h3>Pixels Inspection</h3>"),
         row(
             btn_inspect,
+            btn_help_inspect,
             Spacer(width=10),
             in_flux_normalized,
             in_bkg_subtraction,
@@ -422,7 +440,7 @@ def create_tpf_interact_ui(tpf):
             btn_save_lc.visible = False
 
         # add UI and functions for per-pixel plot
-        btn_plot_per_pixels = Button(label="Per-Pixel Plot", button_type="success")
+        btn_plot_per_pixels = Button(label="Per-Pixel Plot", button_type="success")  # "success" to signify secondary
         out_plot_per_pixels = Div(text="", name="per_pixel_plot_fig")
 
         ui_body.children.append(row(btn_plot_per_pixels, out_plot_per_pixels))
