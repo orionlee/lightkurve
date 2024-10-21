@@ -289,8 +289,9 @@ def create_skyview_metadata_ui(tpf, ztf_search_radius, ztf_ngoodobsrel_min, skyp
 
     tpf_author_str = "TessCut" if is_tesscut(tpf) else "SPOC"
     cur_time_relative = tpf.time[0].value - tpf.meta.get("TSTART", np.nan)
-    unreliable_pixels_warn_msg = ""
+    open_attr, unreliable_pixels_warn_msg = "", ""
     if has_non_science_pixels(tpf):
+        open_attr = "open"  # to ensure the warnings can be spotted without user opening the details
         unreliable_pixels_warn_msg = """
 <span style="background-color: yellow; padding-left: 4px; padding-right: 4px;">Warning:</span>
 Some of the pixels are not science pixels.
@@ -301,7 +302,7 @@ See <a href="https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handboo
     # extra margin-top below is a hack. Otherwise, the UI will bleed into skyview widget above it.
     return Div(name="skyview_metadata", text=f"""
 <div id="skyview_metadata_ctr" style="margin-top: 30px;">
-    <details>
+    <details {open_attr}>
         <summary>Pixels source: {tpf_author_str}</summary>
         Brightness at {tpf.time.format.upper()} {tpf.time[0].value:.2f} ({cur_time_relative:.2f} d in the sector)<br>
         {unreliable_pixels_warn_msg}
