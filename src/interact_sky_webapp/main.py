@@ -10,7 +10,7 @@ import astroquery.vizier as vizier
 import numpy as np
 
 import lightkurve as lk
-from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements, show_interact_widget
+from lightkurve.interact import show_skyview_widget, prepare_lightcurve_datasource, make_lightcurve_figure_elements, show_interact_widget, _get_corrected_coordinate
 from .ext_gaia_tic import ExtendedGaiaDR3TICInteractSkyCatalogProvider
 from .tpf_utils import get_tpf, is_tesscut
 from .lc_utils import read_lc, guess_lc_source
@@ -409,6 +409,21 @@ Shift-Click to add to the selections. Ctrl-Shift-Click to remove from the select
             ymax = get_value_in_float(in_ymax, np.nanmax(lc.flux).value)
             return (ymin * unit, ymax * unit)
 
+        def create_mask_for_target_pixel():
+            t_ra, t_dec, _ = _get_corrected_coordinate(tpf)
+            pix_x, pix_y = tpf.wcs.all_world2pix([(t_ra, t_dec)], 0)[0]
+            # + 0.5: the pixel coordinate refers to the center of the pixel
+            #        e.g., for y=2.7, visually it's on y=3, as y=2 really covers [1.5, 2.5]
+            x, y = int(pix_x + 0.5), int(pix_y + 0.5)
+            mask = np.full(tpf.flux[0].shape, False)
+            mask[y][x] = True
+            return mask
+
+        # for TessCut, set the initial aperture mask to be the single pixel where the target is located
+        # the behavior would be more consistent than using the threshold mask,
+        # which might not be referring to the target at all.
+        aperture_mask = create_mask_for_target_pixel() if is_tesscut(tpf) else tpf.pipeline_mask
+
         # ^^^ for transform_func() and ylim_func()
         #     read users input during execution (inside function body)
         #     so that if users changes the value, they will be
@@ -419,6 +434,7 @@ Shift-Click to add to the selections. Ctrl-Shift-Click to remove from the select
             tpf,
             ylim_func=ylim_func,
             transform_func=transform_func,
+            aperture_mask=aperture_mask,
             return_type="doc_init_fn",
             also_return_selection_mask=True,
             )
