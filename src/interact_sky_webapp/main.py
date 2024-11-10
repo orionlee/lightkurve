@@ -258,11 +258,12 @@ def create_lc_viewer_ui():
 
 def has_non_science_pixels(tpf):
     # see figure 4.3 of https://archive.stsci.edu/missions/tess/doc/TESS_Instrument_Handbook_v0.1.pdf
+    # or https://heasarc.gsfc.nasa.gov/docs/tess/data-products.html#full-frame-images
     return (
-        tpf.column < 0 or  # virtual pixels to the left
-        tpf.column + tpf.shape[1] > 2048 or  # virtual pixels to the right
-        tpf.row + tpf.shape[1] >= 2048 or  # virtual pixels above
-        tpf.row < 0  # virtual pixels below. Should not happen, but keep it here for just in case
+        tpf.column < 45 or  # virtual pixels to the left
+        tpf.column + tpf.shape[2] > 2092 or  # virtual pixels to the right
+        tpf.row + tpf.shape[1] > 2048 or  # virtual pixels above
+        tpf.row < 1  # virtual pixels below (Should not happen, but keep it here for just in case)
     )
 
 
