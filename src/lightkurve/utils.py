@@ -767,7 +767,8 @@ def _query_solar_system_objects(
                 inplace=True,
                 axis="columns",
             )
-            res = res[["Num", "Name", "Class", "Mv", "epoch"]].reset_index(drop=True)
+            # comment out to include angular separation, etc.
+            # res = res[["Num", "Name", "Class", "Mv", "epoch"]].reset_index(drop=True)
             if df is None:
                 df = res
             else:
