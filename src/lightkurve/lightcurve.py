@@ -275,9 +275,9 @@ class LightCurve(TimeSeries):
         Time values.  They can either be given directly as a
         `~astropy.time.Time` array or as any iterable that initializes the
         `~astropy.time.Time` class.
-    flux : `~astropy.units.Quantity` or iterable
+    flux : `~astropy.units.Quantity`, `~astropy.units.masked.MaskedQuantity`, or iterable
         Flux values for every time point.
-    flux_err : `~astropy.units.Quantity` or iterable
+    flux_err : `~astropy.units.Quantity`, `~astropy.units.masked.MaskedQuantity`, or iterable
         Uncertainty on each flux data point.
     **kwargs : dict
         Additional keyword arguments are passed to `~astropy.table.QTable`.
@@ -579,8 +579,14 @@ class LightCurve(TimeSeries):
         self["time"] = time
 
     @property
-    def flux(self) -> Quantity:
-        """Brightness values stored as an AstroPy `~astropy.units.Quantity` object."""
+    def flux(self):
+        """Brightness values stored as an AstroPy `~astropy.units.Quantity` object.
+
+        Note: In special circumstances, this may be an `~astropy.units.masked.MaskedQuantity`
+        object. Masked values are treated by lightkurve as missing data. Masked
+        data may be accessed via self.flux.unmasked, which returns the unmasked
+        Quantity object.
+        """
         return self["flux"]
 
     @flux.setter
@@ -588,8 +594,15 @@ class LightCurve(TimeSeries):
         self["flux"] = flux
 
     @property
-    def flux_err(self) -> Quantity:
-        """Brightness uncertainties stored as an AstroPy `~astropy.units.Quantity` object."""
+    def flux_err(self):
+        """Brightness uncertainties stored as an AstroPy `~astropy.units.Quantity` object.
+
+        
+        Note: In special circumstances, this may be an `~astropy.units.masked.MaskedQuantity`
+        object. Masked values are treated by lightkurve as missing data. Masked
+        data may be accessed via self.flux_err.unmasked, which returns the unmasked
+        Quantity object.
+        """
         return self["flux_err"]
 
     @flux_err.setter
@@ -2537,7 +2550,11 @@ class LightCurve(TimeSeries):
         return Seismology.from_lightcurve(self, **kwargs)
 
     def to_fits(
-        self, path=None, overwrite=False, flux_column_name="FLUX", **extra_data
+        self, 
+        path=None, 
+        overwrite=False, 
+        flux_column_name="FLUX", 
+        **extra_data
     ):
         """Converts the light curve to a FITS file in the Kepler/TESS file format.
 
@@ -2576,11 +2593,13 @@ class LightCurve(TimeSeries):
             np.float64: "D",
         }
 
+
         # If users give a dictionary of values, we first need to "remove" the values from the dictionary
         if extra_data.get('extra_data') is not None:
             for k in extra_data.get('extra_data').keys():
                 extra_data[k] = extra_data['extra_data'][k]
             extra_data.pop('extra_data')
+
 
         def _header_template(extension):
             """Returns a template `fits.Header` object for a given extension."""
@@ -2639,7 +2658,7 @@ class LightCurve(TimeSeries):
                     )
                 )
             if ~np.asarray(
-                [flux_column_name in k.upper() for k in extra_data.keys()]
+                [flux_column_name.upper() == k.upper() for k in extra_data.keys()]
             ).any():
                 cols.append(
                     fits.Column(
@@ -2687,15 +2706,12 @@ class LightCurve(TimeSeries):
                             array=extra_data[kw],
                         )
                     )
-            if "SAP_QUALITY" not in extra_data:
-                cols.append(
-                    fits.Column(
-                        name="SAP_QUALITY", format="J", array=np.zeros(len(self.flux))
-                    )
-                )
+            
             coldefs = fits.ColDefs(cols)
             hdu = fits.BinTableHDU.from_columns(coldefs)
             hdu.header["EXTNAME"] = "LIGHTCURVE"
+
+                
             return hdu
 
         def _hdulist(**extra_data):
@@ -3382,8 +3398,6 @@ class FoldedLightCurve(LightCurve):
         self,
         path=None,
         overwrite=False,
-        flux_column_name="FLUX",
-        aperture_mask=None,
         **extra_data,
     ):
         """Writes the FoldedLightCurve to a FITS file.
@@ -3394,13 +3408,6 @@ class FoldedLightCurve(LightCurve):
             File path, if `None` returns an astropy.io.fits.HDUList object.
         overwrite : bool
             Whether or not to overwrite the file
-        flux_column_name : str
-            The name of the label for the FITS extension, e.g. SAP_FLUX or FLUX
-        aperture_mask : array-like
-            Optional 2D aperture mask to save with this lightcurve object, if
-            defined.  The mask can be either a boolean mask or an integer mask
-            mimicking the Kepler/TESS convention; boolean masks are
-            automatically converted to the Kepler/TESS conventions
         extra_data : dict
             Extra keywords or columns to include in the FITS file.
             Arguments of type str, int, float, or bool will be stored as
@@ -3629,13 +3636,16 @@ class KeplerLightCurve(LightCurve):
         # Default to Kepler file format
         if kwargs.get("format") is None:
             kwargs["format"] = "kepler"
+    
+            
         return super().read(*args, **kwargs)
+         
+    
 
     def to_fits(
         self,
         path=None,
         overwrite=False,
-        flux_column_name="FLUX",
         aperture_mask=None,
         **extra_data,
     ):
@@ -3647,8 +3657,6 @@ class KeplerLightCurve(LightCurve):
             File path, if `None` returns an astropy.io.fits.HDUList object.
         overwrite : bool
             Whether or not to overwrite the file
-        flux_column_name : str
-            The name of the label for the FITS extension, e.g. SAP_FLUX or FLUX
         aperture_mask : array-like
             Optional 2D aperture mask to save with this lightcurve object, if
             defined.  The mask can be either a boolean mask or an integer mask
@@ -3759,7 +3767,6 @@ class TessLightCurve(LightCurve):
         self,
         path=None,
         overwrite=False,
-        flux_column_name="FLUX",
         aperture_mask=None,
         **extra_data,
     ):
@@ -3771,8 +3778,6 @@ class TessLightCurve(LightCurve):
             File path, if `None` returns an astropy.io.fits.HDUList object.
         overwrite : bool
             Whether or not to overwrite the file
-        flux_column_name : str
-            The name of the label for the FITS extension, e.g. SAP_FLUX or FLUX
         aperture_mask : array-like
             Optional 2D aperture mask to save with this lightcurve object, if
             defined.  The mask can be either a boolean mask or an integer mask
@@ -3790,6 +3795,7 @@ class TessLightCurve(LightCurve):
         hdu : astropy.io.fits
             Returns an astropy.io.fits object if path is None
         """
+        
         tess_specific_data = {
             "OBJECT": "{}".format(self.targetid),
             "MISSION": self.meta.get("MISSION"),
@@ -3800,9 +3806,9 @@ class TessLightCurve(LightCurve):
             "SECTOR": self.meta.get("SECTOR"),
             "TARGETID": self.meta.get("TARGETID"),
             "DEC_OBJ": self.meta.get("DEC"),
+            "SAP_QUALITY": self.quality,
         }
-
-
+        
 
         # Not every HLSP has centroid col/row information, so only pass this along if the data exists
         if hasattr(self, 'centroid_col'):
