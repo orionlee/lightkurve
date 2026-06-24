@@ -1,4 +1,12 @@
-2.5.2dev  (unreleased)
+2.6.1dev
+=====================
+- Update search URL for query_solar_system_objects [#1556]
+- Fixed search result sort order for the cases involving TESS sectors 99 and 100, etc. [#1558]
+- Fixed nifty-ls support for cases a) ``fastnifty_chi2`` with ``nterms > 1``, b) non-even
+  frequency grid [#1568]
+- Added basic tests for ``ls_methods`` in ``Periodogram``, ``nifty-ls`` support and made ``nifty_ls`` an explicit optional dependency [#1576]
+
+2.6.0 (2026-04-16)
 =====================
 - Patch for changes to astroquery 0.4.11. Search results using GAIA DR2 now case insensitive. Integer searches converted to string. [#1511]
 - Added Folded lightcurve reader to open data saved with ``lk.FoldedLightCurve.to_fits()`` [#1488]
@@ -7,8 +15,18 @@
 - Include MOM_CENTR1 and MOM_CENTR2, if it exists, when saving fits files [#1488]
 - Fixed bugs in ``bin`` for ``flux_err`` column. Improved ``bin`` performance. [#1499]
 - Updated search result sort order [#1384]
+- When reading in data saved with to_fits, change meta.flux_origin to reflect origin [#1371]
 - Convert flux and flux_err to Quantity objects when using ``select_flux`` [#1513]
 - Fixed bugs in ``FoldedLightCurve`` objects with normalized phase to support pickle / dill [#1529]
+- Added support in ``read_generic_lightcurve()`` for FITS Standard reference time keywords like [M]JDREF [#1535]
+- Capped pandas version at <3.0.0 for breaking changes [#1534]
+- Added ability to download 20-s CBV products for TESS [#1537]
+- Changed search so that it longer emits ERROR log message when the search result is empty [#1540]
+- Fixed search by exact match for TICs with fewer than 9 digits, avoiding the extra 
+  fallback cone search [#1541]
+- Modified how SAP_QUALITY is treated when reading/writing TESS and Kepler data [#1538]
+- Added ability to use nifty-ls for periodograms [#1550]
+- Added new tutorial for read_generic_lightcurve [#1542]
 
 2.5.1  (2025-05-20)
 =====================

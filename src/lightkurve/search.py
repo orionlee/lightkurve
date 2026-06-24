@@ -138,7 +138,12 @@ class SearchResult(object):
         self.table["sort_order"] = [
             sort_priority.get(author, 9) for author in self.table["author"]
         ]
-        self.table.sort(["distance", "sort_order", "author", "year", "exptime", "mission",])
+
+        # Columns "year", "sequence_number", "mission" together maintain chronological sub-order.
+        # We need all three columns because:
+        # - year + mission would fail for TESS sectors 99 and 100 (both in yr 2026, 100 would be ahead)
+        # - year + sequence_number would fail for Kepler (which has no value for sequence_number)
+        self.table.sort(["distance", "sort_order", "author", "year", "sequence_number", "mission", "exptime"])
 
 
     def _add_columns(self):
@@ -948,7 +953,7 @@ def _search_products(
             )
             target = str(target)
         # see: https://archive.stsci.edu/k2/manuals/KSCI-19082-021.pdf
-        elif (target > 200000000) and (target < 252090718): 
+        elif (target > 200000000) and (target < 252090718):
             log.warning(
                 "Warning: {} may refer to a different K2 or TESS target. "
                 "Please add the prefix 'EPIC' or 'TIC' to disambiguate."
@@ -962,7 +967,7 @@ def _search_products(
                 "".format(target)
             )
             return None
-            
+
         # astroquery 0.4.11 update breaks if passing an integer, so convert to string
         else:
             target = f"TIC {target}"
@@ -1009,7 +1014,8 @@ def _search_products(
         "".format(len(observations))
     )
     if len(observations) == 0:
-        raise SearchError('No data found for target "{}".'.format(target))
+        log.debug('No data found for target "{}".'.format(target))
+        return SearchResult(None)
 
     # Light curves and target pixel files
     if filetype.lower() != "ffi":
@@ -1182,7 +1188,7 @@ def _query_mast(
     # Was a TESS target ID passed?
     tess_match = re.match(r"^(tess|tic) ?(\d+)$", target_lower)
     if tess_match:
-        exact_target_name = f"{tess_match.group(2).zfill(9)}"
+        exact_target_name = f"{tess_match.group(2)}"  # for TESS, the id is not zero-padded in MAST
 
     if exact_target_name and radius is None:
         log.debug(
