@@ -148,6 +148,26 @@ def test_search_lightcurve(caplog):
 
 
 @pytest.mark.remote_data
+def test_search_lightcurve_with_small_tic(caplog):
+    """Ensure search by TIC with < 9 digits is done by exact match on target name.
+       For issue #1073 .
+    """
+    caplog.set_level("DEBUG")
+    tic = 74534430  # a TIC with < 9 digits
+    assert len(search_lightcurve(f"TIC {tic}")) > 0
+    # Ensure the log lines are absent, indicating the fallback cone search is not kicked in.
+    # The log lines for fallback cone search:
+    #   No observations found. Now performing a cone search instead.
+    #   Started querying MAST for observations within 0.0001 arcsec arcsec of objectname='TIC 74534430'.
+    assert "Started querying MAST for observations within" not in caplog.text, "Fallback cone search should not be used."
+
+    # Do a control: to ensure that the log line for fallback cone search does exist in the codes.
+    caplog.clear()
+    search_lightcurve(f"TIC 0")  # a non-existent TIC, the fallback cone search should kick in
+    assert "Started querying MAST for observations within" in caplog.text, "Fallback cone search expected."
+
+
+@pytest.mark.remote_data
 def test_search_tesscut():
     # Cutout by target name
     assert len(search_tesscut("pi Mensae", sector=1).table) == 1
@@ -257,6 +277,33 @@ def test_searchresult():
     assert len(sr[2]) == 1
     assert "kplr" in sr.__repr__()
     assert "kplr" in sr._repr_html_()
+
+
+@pytest.mark.remote_data
+def test_searchresult_sort_order():
+    # Ensure the boundary cases of TESS sectors 99, 100, etc. are sorted chronologically
+    # the condition: 1) the same year, and 2) has 2-digit sectors (99) and 3-digit sectors (100, 101, etc.)
+    # https://github.com/lightkurve/lightkurve/issues/1557
+
+    def to_mission_exptime(sr):
+        return [f'{r["mission"]} | {r["exptime"]:.0f}' for r in sr.table]
+
+    # restrict TESS sectors to have predictable output
+    sr = lk.search_lightcurve("TIC15445551", mission="TESS", author="SPOC", sector=[37, 99, 100, 101])
+
+    expected = [
+        "TESS Sector 37 | 20",
+        "TESS Sector 37 | 120",
+        "TESS Sector 99 | 20",
+        "TESS Sector 99 | 120",
+        "TESS Sector 100 | 20",
+        "TESS Sector 100 | 120",
+        "TESS Sector 101 | 20",
+        "TESS Sector 101 | 120",
+    ]
+
+    actual = to_mission_exptime(sr)
+    assert_array_equal(actual, expected)
 
 
 @pytest.mark.remote_data

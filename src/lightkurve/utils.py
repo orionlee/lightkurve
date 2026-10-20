@@ -22,6 +22,7 @@ from astropy.visualization import (
     LinearStretch,
 )
 from astropy.time import Time
+import time
 
 
 log = logging.getLogger(__name__)
@@ -252,7 +253,7 @@ class TessQualityFlags(QualityFlags):
     #: DEFAULT bitmask identifies all cadences which are definitely useless.
     # See https://outerspace.stsci.edu/display/TESS/2.0+-+Data+Product+Overview
     DEFAULT_BITMASK = (
-        AttitudeTweak | SafeMode | CoarsePoint | EarthPoint | Argabrightening | 
+        AttitudeTweak | SafeMode | CoarsePoint | EarthPoint | Argabrightening |
         Desat | ManualExclude | ImpulsiveOutlier | BadCalibrationExclude
     )
     #: HARD bitmask is conservative and may identify cadences which are useful.
@@ -723,7 +724,7 @@ def _query_solar_system_objects(
         Spacecraft location. Options include `'kepler'` and `'tess'`.
     cache : bool or "update"
         Whether to cache the search result. Default is True.
-        Note the astropy cache is used. See download_file for details. 
+        Note the astropy cache is used. See download_file for details.
     show_progress : bool
         Whether to display a progress bar during the download. Default is True.
 
@@ -731,18 +732,21 @@ def _query_solar_system_objects(
     -------
     result : `pandas.DataFrame`
         DataFrame containing the list of known solar system objects at the
-        requested time and location.
+        requested time and location. Note a unique line in the table is created for
+        each timestamp in which an object is present.
     """
     # We import pandas locally, because it takes quite a bit of time to import,
     # and it is only required for this specific feature.
     import pandas as pd
+    from pandas.errors import EmptyDataError
+    from urllib.error import HTTPError
 
     if (location.lower() == "kepler") or (location.lower() == "k2"):
         location = "C55"
     elif location.lower() == "tess":
         location = "C57"
 
-    url = "http://vo.imcce.fr/webservices/skybot/skybotconesearch_query.php?"
+    url = "https://ssp.imcce.fr/webservices/skybot/api/conesearch.php?"
     url += "-mime=text&"
     url += "-ra={}&".format(ra)
     url += "-dec={}&".format(dec)
@@ -751,18 +755,28 @@ def _query_solar_system_objects(
 
     df = None
     times = np.atleast_1d(times)
-    for time in tqdm(times, desc="Querying for SSOs", disable=~show_progress):
-        url_queried = url + "EPOCH={}".format(time)
-        response = download_file(url_queried, cache=cache, show_progress=show_progress)
+    for t in tqdm(times, desc="Querying for SSOs", disable=~show_progress):
+        url_queried = url + "EPOCH={}".format(t)
+        for attempt in range(5):
+            try:
+                response = download_file(url_queried, cache=cache, show_progress=show_progress)
+                break
+            except HTTPError:
+                log.info(f"HTTP error (Attempt {attempt+1} of 5). Trying again...")
+                time.sleep(1)
+
         if open(response).read(10) == "# Flag: -1":  # error code detected?
             raise IOError(
                 "SkyBot Solar System query failed.\n"
                 "URL used:\n" + url_queried + "\n"
                 "Response received:\n" + open(response).read()
             )
-        res = pd.read_csv(response, delimiter="|", skiprows=2)
+        try:
+            res = pd.read_csv(response, delimiter="|", skiprows=2)
+        except EmptyDataError:
+            res = []
         if len(res) > 0:
-            res["epoch"] = time
+            res["epoch"] = t
             res.rename(
                 {"# Num ": "Num", " Name ": "Name", " Class ": "Class", " Mv ": "Mv"},
                 inplace=True,

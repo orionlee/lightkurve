@@ -1,15 +1,16 @@
 # GitHub Actions workflow for Lightkurve's continuous integration.
 #
-# This file configures nine different jobs:
+# This file configures the following jobs:
 # 1) pytest on Linux, Python 3.9, with -m memtest (i.e. stress memory)
 # 2) pytest on Linux, Python 3.9, with --remote-data enabled (i.e. get data from MAST).
 # 3) pytest on Linux, Python 3.10.
 # 4) pytest on Linux, Python 3.11.
 # 5) pytest on Linux, Python 3.12.
 # 6) pytest on Linux, Python 3.13.
-# 7) pytest on Windows, Python 3.9.
-# 8) pytest on OSX, Python 3.9.
-# 9) flake8 syntax check.
+# 7) pytest on Linux, Python 3.14.
+# 8) pytest on Windows, Python 3.9.
+# 9) pytest on OSX, Python 3.9.
+# 10) flake8 syntax check.
 
 name: Lightkurve-tests
 
@@ -28,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        name: ["3.9-remote-data", "3.9-memtest", "3.10", "3.11", "3.12", "3.13"]
+        name: ["3.9-remote-data", "3.9-memtest", "3.10", "3.11", "3.12", "3.13", "3.14"]
         include:
           - name: "3.9-remote-data"
             python-version: "3.9"
@@ -48,6 +49,9 @@ jobs:
           - name: "3.13"
             python-version: "3.13"
             pytest-command: ./poetry/bin/poetry run pytest
+          - name: "3.14"
+            python-version: "3.14"
+            pytest-command: ./poetry/bin/poetry run pytest
     steps:
     - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
@@ -60,7 +64,7 @@ jobs:
         python -m venv ./poetry
         ./poetry/bin/python -m pip install --upgrade pip
         ./poetry/bin/pip install poetry==2.2.1
-        ./poetry/bin/poetry install --with dev
+        ./poetry/bin/poetry install --with dev --extras "nifty-ls"
     - name: Test with ${{ matrix.pytest-command }}
       run: |
         ${{ matrix.pytest-command }}
@@ -85,6 +89,7 @@ jobs:
         .\poetry\Scripts\activate.ps1
         python -m pip install --upgrade pip
         python -m pip install poetry
+        # for Windows, no `--extras "nifty-ls"` because nifty-ls has no Windows binary wheel
         poetry install --with dev
     - name: Test with pytest
       run: |
@@ -109,7 +114,7 @@ jobs:
         python -m venv ./poetry
         ./poetry/bin/python -m pip install --upgrade pip
         ./poetry/bin/pip install poetry==2.2.1
-        ./poetry/bin/poetry install --with dev
+        ./poetry/bin/poetry install --with dev --extras "nifty-ls"
     - name: Test with pytest
       run: |
         ./poetry/bin/poetry run pytest
